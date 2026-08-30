@@ -1,0 +1,60 @@
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+}
+
+.mainContent {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  padding: 1rem 2rem;
+  gap: 1.5rem;
+}
+
+.leftSidebar {
+  flex: 0 0 300px;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  overflow-y: auto;
+}
+
+.centerView {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  background-color: rgba(0, 0, 0, 0.2);
+}
+
+.rightSidebar {
+  flex: 0 0 350px;
+  display: flex;
+  flex-direction: column;
+  overflow-y: hidden; /* SensorGrid handles its own scroll */
+}
+
+@media (max-width: 1200px) {
+  .mainContent {
+    flex-direction: column;
+    overflow-y: auto;
+  }
+  
+  .leftSidebar, .rightSidebar, .centerView {
+    flex: none;
+    width: 100%;
+  }
+
+  .centerView {
+    height: 50vh;
+  }
+  
+  .rightSidebar {
+    height: 60vh;
+  }
+}

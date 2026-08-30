@@ -1,0 +1,2162 @@
+{
+  "X1": {
+    "id": "X1",
+    "fibreId": "UNASSIGNED",
+    "region": "torso_front",
+    "label": "Calibration map - torso_front X1",
+    "position": [
+      -0.07995748715131967,
+      -0.8023793576909364,
+      -0.32201595634228264
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X2": {
+    "id": "X2",
+    "fibreId": "UNASSIGNED",
+    "region": "torso_back",
+    "label": "Calibration map - torso_back X2",
+    "position": [
+      0.16761250710126763,
+      0.24409606333282086,
+      0.11531682700172441
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X3": {
+    "id": "X3",
+    "fibreId": "UNASSIGNED",
+    "region": "left_arm",
+    "label": "Calibration map - left_arm X3",
+    "position": [
+      -0.03400964013274477,
+      0.5431664430372594,
+      0.012213968638118189
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X4": {
+    "id": "X4",
+    "fibreId": "UNASSIGNED",
+    "region": "right_arm",
+    "label": "Calibration map - right_arm X4",
+    "position": [
+      0.47806641308967956,
+      -0.7325317007539356,
+      0.32209682937984485
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X5": {
+    "id": "X5",
+    "fibreId": "UNASSIGNED",
+    "region": "left_glove",
+    "label": "Calibration map - left_glove X5",
+    "position": [
+      0.029442366098737405,
+      0.08176347570559406,
+      -0.4003602170864039
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X6": {
+    "id": "X6",
+    "fibreId": "UNASSIGNED",
+    "region": "right_glove",
+    "label": "Calibration map - right_glove X6",
+    "position": [
+      -0.4895395555740316,
+      -0.6692921654581456,
+      0.029224000642034342
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X7": {
+    "id": "X7",
+    "fibreId": "UNASSIGNED",
+    "region": "left_leg",
+    "label": "Calibration map - left_leg X7",
+    "position": [
+      0.30951826371048197,
+      -0.8140975539129556,
+      -0.3745937380340084
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X8": {
+    "id": "X8",
+    "fibreId": "UNASSIGNED",
+    "region": "right_leg",
+    "label": "Calibration map - right_leg X8",
+    "position": [
+      -0.2923591123129181,
+      0.3820976371278302,
+      0.053614739544340595
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X9": {
+    "id": "X9",
+    "fibreId": "UNASSIGNED",
+    "region": "left_boot",
+    "label": "Calibration map - left_boot X9",
+    "position": [
+      -0.2563767418920987,
+      0.41210103719018165,
+      -0.2826702905530555
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X10": {
+    "id": "X10",
+    "fibreId": "UNASSIGNED",
+    "region": "right_boot",
+    "label": "Calibration map - right_boot X10",
+    "position": [
+      -0.2490889117350048,
+      -0.7630554644371168,
+      0.19624744929556737
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X11": {
+    "id": "X11",
+    "fibreId": "UNASSIGNED",
+    "region": "helmet",
+    "label": "Calibration map - helmet X11",
+    "position": [
+      -0.26937918766482316,
+      -0.3635201823895242,
+      0.13103172740854163
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X12": {
+    "id": "X12",
+    "fibreId": "UNASSIGNED",
+    "region": "torso_front",
+    "label": "Calibration map - torso_front X12",
+    "position": [
+      -0.15164069372068567,
+      -0.7570514904881052,
+      -0.23998057625705704
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X13": {
+    "id": "X13",
+    "fibreId": "UNASSIGNED",
+    "region": "torso_back",
+    "label": "Calibration map - torso_back X13",
+    "position": [
+      0.2634356762153386,
+      -0.11375977046478059,
+      -0.2185454396277876
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X14": {
+    "id": "X14",
+    "fibreId": "UNASSIGNED",
+    "region": "left_arm",
+    "label": "Calibration map - left_arm X14",
+    "position": [
+      -0.25175547276399823,
+      0.418901385852787,
+      -0.42388551243127204
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X15": {
+    "id": "X15",
+    "fibreId": "UNASSIGNED",
+    "region": "right_arm",
+    "label": "Calibration map - right_arm X15",
+    "position": [
+      0.4183532362727884,
+      -0.4368232037400226,
+      -0.1536809226252871
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X16": {
+    "id": "X16",
+    "fibreId": "UNASSIGNED",
+    "region": "left_glove",
+    "label": "Calibration map - left_glove X16",
+    "position": [
+      0.35714778854242923,
+      -0.8778806809293844,
+      0.05450527054920218
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X17": {
+    "id": "X17",
+    "fibreId": "UNASSIGNED",
+    "region": "right_glove",
+    "label": "Calibration map - right_glove X17",
+    "position": [
+      -0.34595839435756726,
+      0.8980787623991098,
+      -0.27176059039092004
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X18": {
+    "id": "X18",
+    "fibreId": "UNASSIGNED",
+    "region": "left_leg",
+    "label": "Calibration map - left_leg X18",
+    "position": [
+      0.2550294444956992,
+      -0.5313344589912969,
+      0.09889321210683022
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X19": {
+    "id": "X19",
+    "fibreId": "UNASSIGNED",
+    "region": "right_leg",
+    "label": "Calibration map - right_leg X19",
+    "position": [
+      0.0028705755546130085,
+      0.29686706892427384,
+      -0.43541250108090523
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X20": {
+    "id": "X20",
+    "fibreId": "UNASSIGNED",
+    "region": "left_boot",
+    "label": "Calibration map - left_boot X20",
+    "position": [
+      -0.014490391481656428,
+      -0.8476949932661246,
+      -0.07598745649601601
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X21": {
+    "id": "X21",
+    "fibreId": "UNASSIGNED",
+    "region": "right_boot",
+    "label": "Calibration map - right_boot X21",
+    "position": [
+      -0.40290744269147305,
+      0.8294114158380501,
+      0.30518534631472094
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X22": {
+    "id": "X22",
+    "fibreId": "UNASSIGNED",
+    "region": "helmet",
+    "label": "Calibration map - helmet X22",
+    "position": [
+      -0.11874529459693428,
+      -0.23222235053653084,
+      -0.0007643989377068561
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X23": {
+    "id": "X23",
+    "fibreId": "UNASSIGNED",
+    "region": "torso_front",
+    "label": "Calibration map - torso_front X23",
+    "position": [
+      -0.43950091909256084,
+      -0.0245735529614437,
+      -0.15496466497622208
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X24": {
+    "id": "X24",
+    "fibreId": "UNASSIGNED",
+    "region": "torso_back",
+    "label": "Calibration map - torso_back X24",
+    "position": [
+      -0.4803703867208188,
+      -0.4188225053134351,
+      -0.04461500236664251
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X25": {
+    "id": "X25",
+    "fibreId": "UNASSIGNED",
+    "region": "left_arm",
+    "label": "Calibration map - left_arm X25",
+    "position": [
+      -0.09862323469015488,
+      -0.0824443333303404,
+      0.2299552752747822
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X26": {
+    "id": "X26",
+    "fibreId": "UNASSIGNED",
+    "region": "right_arm",
+    "label": "Calibration map - right_arm X26",
+    "position": [
+      -0.49582483678051426,
+      -0.2833648021727284,
+      0.24608133934849852
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X27": {
+    "id": "X27",
+    "fibreId": "UNASSIGNED",
+    "region": "left_glove",
+    "label": "Calibration map - left_glove X27",
+    "position": [
+      0.39578127864662715,
+      -0.0849163098624719,
+      0.2038569619747519
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X28": {
+    "id": "X28",
+    "fibreId": "UNASSIGNED",
+    "region": "right_glove",
+    "label": "Calibration map - right_glove X28",
+    "position": [
+      0.26698756466728,
+      0.7362517549625391,
+      -0.11057156611483787
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X29": {
+    "id": "X29",
+    "fibreId": "UNASSIGNED",
+    "region": "left_leg",
+    "label": "Calibration map - left_leg X29",
+    "position": [
+      0.13019193562097997,
+      0.6222159985971065,
+      0.2909998467917214
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X30": {
+    "id": "X30",
+    "fibreId": "UNASSIGNED",
+    "region": "right_leg",
+    "label": "Calibration map - right_leg X30",
+    "position": [
+      0.38087819719481975,
+      0.5171398909823577,
+      0.45209810885031
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X31": {
+    "id": "X31",
+    "fibreId": "UNASSIGNED",
+    "region": "left_boot",
+    "label": "Calibration map - left_boot X31",
+    "position": [
+      -0.4310571997571857,
+      -0.5893919853690013,
+      -0.47448538074829694
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X32": {
+    "id": "X32",
+    "fibreId": "UNASSIGNED",
+    "region": "right_boot",
+    "label": "Calibration map - right_boot X32",
+    "position": [
+      -0.0640986722104464,
+      -0.46268864176203994,
+      -0.010005314772599028
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X33": {
+    "id": "X33",
+    "fibreId": "UNASSIGNED",
+    "region": "helmet",
+    "label": "Calibration map - helmet X33",
+    "position": [
+      -0.4344211623555454,
+      -0.7819672913109801,
+      -0.33167730261891815
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X34": {
+    "id": "X34",
+    "fibreId": "UNASSIGNED",
+    "region": "torso_front",
+    "label": "Calibration map - torso_front X34",
+    "position": [
+      0.1151933285911717,
+      -0.8222778729768936,
+      -0.20014598639380354
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X35": {
+    "id": "X35",
+    "fibreId": "UNASSIGNED",
+    "region": "torso_back",
+    "label": "Calibration map - torso_back X35",
+    "position": [
+      0.3298801845222171,
+      -0.5725384521956638,
+      0.36780765509477453
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X36": {
+    "id": "X36",
+    "fibreId": "UNASSIGNED",
+    "region": "left_arm",
+    "label": "Calibration map - left_arm X36",
+    "position": [
+      0.3015898641517728,
+      0.8545632348323187,
+      0.043796499900984553
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X37": {
+    "id": "X37",
+    "fibreId": "UNASSIGNED",
+    "region": "right_arm",
+    "label": "Calibration map - right_arm X37",
+    "position": [
+      -0.15427097732403283,
+      0.5558400345694394,
+      -0.10288417616294332
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X38": {
+    "id": "X38",
+    "fibreId": "UNASSIGNED",
+    "region": "left_glove",
+    "label": "Calibration map - left_glove X38",
+    "position": [
+      0.49769596657634607,
+      0.3086820219278992,
+      0.3165559218651278
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X39": {
+    "id": "X39",
+    "fibreId": "UNASSIGNED",
+    "region": "right_glove",
+    "label": "Calibration map - right_glove X39",
+    "position": [
+      -0.09171103031496741,
+      0.8324828920994964,
+      0.031174781703609766
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X40": {
+    "id": "X40",
+    "fibreId": "UNASSIGNED",
+    "region": "left_leg",
+    "label": "Calibration map - left_leg X40",
+    "position": [
+      0.46391720870212083,
+      -0.546533276140067,
+      -0.04295400074462408
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X41": {
+    "id": "X41",
+    "fibreId": "UNASSIGNED",
+    "region": "right_leg",
+    "label": "Calibration map - right_leg X41",
+    "position": [
+      -0.03172156544501059,
+      -0.9887151684955824,
+      0.0018616872456136413
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X42": {
+    "id": "X42",
+    "fibreId": "UNASSIGNED",
+    "region": "left_boot",
+    "label": "Calibration map - left_boot X42",
+    "position": [
+      0.00011575270786534642,
+      -0.06841505387371982,
+      -0.4360849971899752
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X43": {
+    "id": "X43",
+    "fibreId": "UNASSIGNED",
+    "region": "right_boot",
+    "label": "Calibration map - right_boot X43",
+    "position": [
+      0.4313291949387371,
+      -0.01456940166183096,
+      -0.12419970267479064
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X44": {
+    "id": "X44",
+    "fibreId": "UNASSIGNED",
+    "region": "helmet",
+    "label": "Calibration map - helmet X44",
+    "position": [
+      0.18447389111320112,
+      0.5507536022437758,
+      -0.36830231131089697
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X45": {
+    "id": "X45",
+    "fibreId": "UNASSIGNED",
+    "region": "torso_front",
+    "label": "Calibration map - torso_front X45",
+    "position": [
+      -0.39139080233084245,
+      0.6748478227320267,
+      0.2803460408031443
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X46": {
+    "id": "X46",
+    "fibreId": "UNASSIGNED",
+    "region": "torso_back",
+    "label": "Calibration map - torso_back X46",
+    "position": [
+      0.44277153955200477,
+      -0.8733293650034439,
+      -0.03388719715329058
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X47": {
+    "id": "X47",
+    "fibreId": "UNASSIGNED",
+    "region": "left_arm",
+    "label": "Calibration map - left_arm X47",
+    "position": [
+      -0.45556719031750903,
+      0.4864403626972156,
+      -0.44590273836123695
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X48": {
+    "id": "X48",
+    "fibreId": "UNASSIGNED",
+    "region": "right_arm",
+    "label": "Calibration map - right_arm X48",
+    "position": [
+      -0.36172299786134876,
+      0.9132449276309655,
+      -0.16373568699388552
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X49": {
+    "id": "X49",
+    "fibreId": "UNASSIGNED",
+    "region": "left_glove",
+    "label": "Calibration map - left_glove X49",
+    "position": [
+      0.31319540127445034,
+      0.48054653008226067,
+      -0.39173073037704487
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X50": {
+    "id": "X50",
+    "fibreId": "UNASSIGNED",
+    "region": "right_glove",
+    "label": "Calibration map - right_glove X50",
+    "position": [
+      -0.4187993169820823,
+      -0.40560072341996967,
+      -0.3808148771676012
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X51": {
+    "id": "X51",
+    "fibreId": "UNASSIGNED",
+    "region": "left_leg",
+    "label": "Calibration map - left_leg X51",
+    "position": [
+      -0.2043914677442057,
+      -0.9927908575483206,
+      0.1544786602225292
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X52": {
+    "id": "X52",
+    "fibreId": "UNASSIGNED",
+    "region": "right_leg",
+    "label": "Calibration map - right_leg X52",
+    "position": [
+      -0.05958106003382635,
+      -0.40835175238349875,
+      0.13942630249407417
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X53": {
+    "id": "X53",
+    "fibreId": "UNASSIGNED",
+    "region": "left_boot",
+    "label": "Calibration map - left_boot X53",
+    "position": [
+      -0.3452769743420723,
+      0.20616915662365254,
+      0.22986233566224323
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X54": {
+    "id": "X54",
+    "fibreId": "UNASSIGNED",
+    "region": "right_boot",
+    "label": "Calibration map - right_boot X54",
+    "position": [
+      0.41268381900994067,
+      -0.4215399981796373,
+      -0.045443791920165344
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X55": {
+    "id": "X55",
+    "fibreId": "UNASSIGNED",
+    "region": "helmet",
+    "label": "Calibration map - helmet X55",
+    "position": [
+      -0.18745345700129368,
+      0.18732469123125628,
+      0.11704687497677091
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X56": {
+    "id": "X56",
+    "fibreId": "UNASSIGNED",
+    "region": "torso_front",
+    "label": "Calibration map - torso_front X56",
+    "position": [
+      0.28568813352893196,
+      0.5782786894749326,
+      0.36994288748838233
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X57": {
+    "id": "X57",
+    "fibreId": "UNASSIGNED",
+    "region": "torso_back",
+    "label": "Calibration map - torso_back X57",
+    "position": [
+      -0.3875765761070442,
+      0.07231123298066677,
+      0.2773222119875154
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X58": {
+    "id": "X58",
+    "fibreId": "UNASSIGNED",
+    "region": "left_arm",
+    "label": "Calibration map - left_arm X58",
+    "position": [
+      -0.05422565451309225,
+      -0.5663741795523591,
+      0.22545885860881942
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X59": {
+    "id": "X59",
+    "fibreId": "UNASSIGNED",
+    "region": "right_arm",
+    "label": "Calibration map - right_arm X59",
+    "position": [
+      -0.13429047741781786,
+      -0.19623434284151609,
+      -0.4221192409440041
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X60": {
+    "id": "X60",
+    "fibreId": "UNASSIGNED",
+    "region": "left_glove",
+    "label": "Calibration map - left_glove X60",
+    "position": [
+      0.0796508646707258,
+      0.9657167159633748,
+      0.021928300328491246
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X61": {
+    "id": "X61",
+    "fibreId": "UNASSIGNED",
+    "region": "right_glove",
+    "label": "Calibration map - right_glove X61",
+    "position": [
+      -0.010623095894544354,
+      -0.3462432218187679,
+      0.08416017674984222
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X62": {
+    "id": "X62",
+    "fibreId": "UNASSIGNED",
+    "region": "left_leg",
+    "label": "Calibration map - left_leg X62",
+    "position": [
+      -0.3055624999632516,
+      -0.7088750590959636,
+      -0.056540799786131246
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X63": {
+    "id": "X63",
+    "fibreId": "UNASSIGNED",
+    "region": "right_leg",
+    "label": "Calibration map - right_leg X63",
+    "position": [
+      -0.43047532204687944,
+      -0.6053868953302588,
+      -0.01073904425932981
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X64": {
+    "id": "X64",
+    "fibreId": "UNASSIGNED",
+    "region": "left_boot",
+    "label": "Calibration map - left_boot X64",
+    "position": [
+      0.4760645283929572,
+      -0.22043254287577807,
+      0.3605487674269713
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X65": {
+    "id": "X65",
+    "fibreId": "UNASSIGNED",
+    "region": "right_boot",
+    "label": "Calibration map - right_boot X65",
+    "position": [
+      -0.34981528096345926,
+      -0.8950626810510431,
+      0.21961350140297387
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y1": {
+    "id": "Y1",
+    "fibreId": "UNASSIGNED",
+    "region": "torso_front",
+    "label": "Calibration map - torso_front Y1",
+    "position": [
+      -0.46306660951418044,
+      -0.01472644571263415,
+      0.17278514584649662
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y2": {
+    "id": "Y2",
+    "fibreId": "UNASSIGNED",
+    "region": "torso_back",
+    "label": "Calibration map - torso_back Y2",
+    "position": [
+      0.2666871651947619,
+      -0.8909260281063871,
+      -0.11506847514643392
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y3": {
+    "id": "Y3",
+    "fibreId": "UNASSIGNED",
+    "region": "left_arm",
+    "label": "Calibration map - left_arm Y3",
+    "position": [
+      0.4116051821661074,
+      -0.042475475681294395,
+      0.3033283196427423
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y4": {
+    "id": "Y4",
+    "fibreId": "UNASSIGNED",
+    "region": "right_arm",
+    "label": "Calibration map - right_arm Y4",
+    "position": [
+      -0.3378142571534697,
+      -0.42465217641664665,
+      0.24261043883320954
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y5": {
+    "id": "Y5",
+    "fibreId": "UNASSIGNED",
+    "region": "left_glove",
+    "label": "Calibration map - left_glove Y5",
+    "position": [
+      -0.09518282855212445,
+      0.43842372452318434,
+      0.13254660289863496
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y6": {
+    "id": "Y6",
+    "fibreId": "UNASSIGNED",
+    "region": "right_glove",
+    "label": "Calibration map - right_glove Y6",
+    "position": [
+      0.01837666205494648,
+      -0.9694859620750689,
+      -0.016314984995552062
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y7": {
+    "id": "Y7",
+    "fibreId": "UNASSIGNED",
+    "region": "left_leg",
+    "label": "Calibration map - left_leg Y7",
+    "position": [
+      0.311899747666195,
+      0.06513338942202784,
+      0.3453976660479995
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y8": {
+    "id": "Y8",
+    "fibreId": "UNASSIGNED",
+    "region": "right_leg",
+    "label": "Calibration map - right_leg Y8",
+    "position": [
+      -0.335388603564968,
+      0.10104834908037352,
+      -0.3155589653269263
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y9": {
+    "id": "Y9",
+    "fibreId": "UNASSIGNED",
+    "region": "left_boot",
+    "label": "Calibration map - left_boot Y9",
+    "position": [
+      0.32889300208379446,
+      0.4026365955804585,
+      0.30198653552544985
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y10": {
+    "id": "Y10",
+    "fibreId": "UNASSIGNED",
+    "region": "right_boot",
+    "label": "Calibration map - right_boot Y10",
+    "position": [
+      -0.12351869109569225,
+      0.5689517017338968,
+      -0.39599636840679886
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y11": {
+    "id": "Y11",
+    "fibreId": "UNASSIGNED",
+    "region": "helmet",
+    "label": "Calibration map - helmet Y11",
+    "position": [
+      0.1485654657091714,
+      -0.02959495723922001,
+      -0.08822170489934644
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y12": {
+    "id": "Y12",
+    "fibreId": "UNASSIGNED",
+    "region": "torso_front",
+    "label": "Calibration map - torso_front Y12",
+    "position": [
+      -0.3309685894749338,
+      -0.22185942371350698,
+      0.07609186863804485
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y13": {
+    "id": "Y13",
+    "fibreId": "UNASSIGNED",
+    "region": "torso_back",
+    "label": "Calibration map - torso_back Y13",
+    "position": [
+      0.4514634625297279,
+      -0.4443945512467493,
+      -0.26738219754493997
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y14": {
+    "id": "Y14",
+    "fibreId": "UNASSIGNED",
+    "region": "left_arm",
+    "label": "Calibration map - left_arm Y14",
+    "position": [
+      -0.42394835505749184,
+      0.14528935628201767,
+      -0.29008642381009453
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y15": {
+    "id": "Y15",
+    "fibreId": "UNASSIGNED",
+    "region": "right_arm",
+    "label": "Calibration map - right_arm Y15",
+    "position": [
+      -0.27486829528360535,
+      -0.31843606090244414,
+      0.26803715992972965
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y16": {
+    "id": "Y16",
+    "fibreId": "UNASSIGNED",
+    "region": "left_glove",
+    "label": "Calibration map - left_glove Y16",
+    "position": [
+      -0.3349893420872587,
+      0.37391621012736187,
+      0.47066348680433956
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y17": {
+    "id": "Y17",
+    "fibreId": "UNASSIGNED",
+    "region": "right_glove",
+    "label": "Calibration map - right_glove Y17",
+    "position": [
+      -0.4525605013954026,
+      -0.6307123050893917,
+      -0.24876840264090216
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y18": {
+    "id": "Y18",
+    "fibreId": "UNASSIGNED",
+    "region": "left_leg",
+    "label": "Calibration map - left_leg Y18",
+    "position": [
+      0.4299435024233269,
+      0.03159598474827208,
+      0.28934426607488617
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y19": {
+    "id": "Y19",
+    "fibreId": "UNASSIGNED",
+    "region": "right_leg",
+    "label": "Calibration map - right_leg Y19",
+    "position": [
+      0.15469561960190936,
+      0.9247530958025334,
+      0.017941097415242968
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y20": {
+    "id": "Y20",
+    "fibreId": "UNASSIGNED",
+    "region": "left_boot",
+    "label": "Calibration map - left_boot Y20",
+    "position": [
+      -0.03766155030018714,
+      0.4595199302927466,
+      0.4021713931552898
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y21": {
+    "id": "Y21",
+    "fibreId": "UNASSIGNED",
+    "region": "right_boot",
+    "label": "Calibration map - right_boot Y21",
+    "position": [
+      0.4049621501736709,
+      -0.8649110026390894,
+      -0.3756968310008292
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y22": {
+    "id": "Y22",
+    "fibreId": "UNASSIGNED",
+    "region": "helmet",
+    "label": "Calibration map - helmet Y22",
+    "position": [
+      -0.08131833108482867,
+      0.8030663898324317,
+      0.3029030861490699
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y23": {
+    "id": "Y23",
+    "fibreId": "UNASSIGNED",
+    "region": "torso_front",
+    "label": "Calibration map - torso_front Y23",
+    "position": [
+      0.14197451579374243,
+      -0.29341788251617773,
+      -0.3556369715993256
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y24": {
+    "id": "Y24",
+    "fibreId": "UNASSIGNED",
+    "region": "torso_back",
+    "label": "Calibration map - torso_back Y24",
+    "position": [
+      0.44545049059619757,
+      -0.1643684543364461,
+      -0.2673546506810336
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y25": {
+    "id": "Y25",
+    "fibreId": "UNASSIGNED",
+    "region": "left_arm",
+    "label": "Calibration map - left_arm Y25",
+    "position": [
+      -0.3882832164489679,
+      -0.8690373377588083,
+      0.47813653491399455
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y26": {
+    "id": "Y26",
+    "fibreId": "UNASSIGNED",
+    "region": "right_arm",
+    "label": "Calibration map - right_arm Y26",
+    "position": [
+      0.05530123624345251,
+      0.5980636410039937,
+      0.13114796728707112
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y27": {
+    "id": "Y27",
+    "fibreId": "UNASSIGNED",
+    "region": "left_glove",
+    "label": "Calibration map - left_glove Y27",
+    "position": [
+      -0.1597436396322366,
+      0.8787427013275664,
+      0.47548894530400276
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y28": {
+    "id": "Y28",
+    "fibreId": "UNASSIGNED",
+    "region": "right_glove",
+    "label": "Calibration map - right_glove Y28",
+    "position": [
+      -0.18143757045928866,
+      0.8395696312790408,
+      -0.13038469646371653
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y29": {
+    "id": "Y29",
+    "fibreId": "UNASSIGNED",
+    "region": "left_leg",
+    "label": "Calibration map - left_leg Y29",
+    "position": [
+      -0.0282099483602124,
+      -0.004135287249286357,
+      -0.09963984705741669
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y30": {
+    "id": "Y30",
+    "fibreId": "UNASSIGNED",
+    "region": "right_leg",
+    "label": "Calibration map - right_leg Y30",
+    "position": [
+      0.4399187460529761,
+      0.1439809841583657,
+      0.45898563761761335
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y31": {
+    "id": "Y31",
+    "fibreId": "UNASSIGNED",
+    "region": "left_boot",
+    "label": "Calibration map - left_boot Y31",
+    "position": [
+      -0.29975839486207956,
+      0.17013319118112658,
+      0.2654335971288022
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y32": {
+    "id": "Y32",
+    "fibreId": "UNASSIGNED",
+    "region": "right_boot",
+    "label": "Calibration map - right_boot Y32",
+    "position": [
+      0.0894525949041648,
+      -0.470364072483338,
+      -0.21075896958319562
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y33": {
+    "id": "Y33",
+    "fibreId": "UNASSIGNED",
+    "region": "helmet",
+    "label": "Calibration map - helmet Y33",
+    "position": [
+      -0.4978808121335736,
+      -0.6998096882095026,
+      -0.19078130563383855
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y34": {
+    "id": "Y34",
+    "fibreId": "UNASSIGNED",
+    "region": "torso_front",
+    "label": "Calibration map - torso_front Y34",
+    "position": [
+      0.3981649338570721,
+      0.3520207477614379,
+      0.06597087905257826
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y35": {
+    "id": "Y35",
+    "fibreId": "UNASSIGNED",
+    "region": "torso_back",
+    "label": "Calibration map - torso_back Y35",
+    "position": [
+      -0.05417379000977052,
+      0.35738356363462453,
+      0.4288826223132354
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y36": {
+    "id": "Y36",
+    "fibreId": "UNASSIGNED",
+    "region": "left_arm",
+    "label": "Calibration map - left_arm Y36",
+    "position": [
+      0.39340408368297863,
+      0.05511654769149321,
+      0.3183804388272534
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y37": {
+    "id": "Y37",
+    "fibreId": "UNASSIGNED",
+    "region": "right_arm",
+    "label": "Calibration map - right_arm Y37",
+    "position": [
+      0.07411954014647293,
+      0.2633754935176098,
+      -0.4765265931828988
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y38": {
+    "id": "Y38",
+    "fibreId": "UNASSIGNED",
+    "region": "left_glove",
+    "label": "Calibration map - left_glove Y38",
+    "position": [
+      -0.36227291591361077,
+      0.09141699872203302,
+      -0.1894457454587286
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y39": {
+    "id": "Y39",
+    "fibreId": "UNASSIGNED",
+    "region": "right_glove",
+    "label": "Calibration map - right_glove Y39",
+    "position": [
+      0.22997826287665923,
+      -0.7694256521183664,
+      -0.4198558685153566
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y40": {
+    "id": "Y40",
+    "fibreId": "UNASSIGNED",
+    "region": "left_leg",
+    "label": "Calibration map - left_leg Y40",
+    "position": [
+      0.44010388556767843,
+      -0.9680147467058264,
+      0.03752547370377046
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y41": {
+    "id": "Y41",
+    "fibreId": "UNASSIGNED",
+    "region": "right_leg",
+    "label": "Calibration map - right_leg Y41",
+    "position": [
+      0.39054994958861056,
+      0.432716575462629,
+      0.39926453804636974
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y42": {
+    "id": "Y42",
+    "fibreId": "UNASSIGNED",
+    "region": "left_boot",
+    "label": "Calibration map - left_boot Y42",
+    "position": [
+      0.208506094390014,
+      -0.6299721039406476,
+      -0.4974911109954968
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y43": {
+    "id": "Y43",
+    "fibreId": "UNASSIGNED",
+    "region": "right_boot",
+    "label": "Calibration map - right_boot Y43",
+    "position": [
+      0.35769667088007107,
+      -0.8789782931139543,
+      0.1496778068804151
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y44": {
+    "id": "Y44",
+    "fibreId": "UNASSIGNED",
+    "region": "helmet",
+    "label": "Calibration map - helmet Y44",
+    "position": [
+      -0.4292635045868102,
+      -0.2798085432518693,
+      -0.32271487855476677
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y45": {
+    "id": "Y45",
+    "fibreId": "UNASSIGNED",
+    "region": "torso_front",
+    "label": "Calibration map - torso_front Y45",
+    "position": [
+      0.2200780851317472,
+      -0.3505845609260174,
+      0.017304949043018936
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y46": {
+    "id": "Y46",
+    "fibreId": "UNASSIGNED",
+    "region": "torso_back",
+    "label": "Calibration map - torso_back Y46",
+    "position": [
+      -0.2854819439146533,
+      0.10648614088745734,
+      -0.3314681572677849
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y47": {
+    "id": "Y47",
+    "fibreId": "UNASSIGNED",
+    "region": "left_arm",
+    "label": "Calibration map - left_arm Y47",
+    "position": [
+      0.06902315801996273,
+      0.4193468234809954,
+      -0.08292432931964733
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y48": {
+    "id": "Y48",
+    "fibreId": "UNASSIGNED",
+    "region": "right_arm",
+    "label": "Calibration map - right_arm Y48",
+    "position": [
+      -0.4144356499606039,
+      -0.7093147392447441,
+      -0.2846013270484399
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y49": {
+    "id": "Y49",
+    "fibreId": "UNASSIGNED",
+    "region": "left_glove",
+    "label": "Calibration map - left_glove Y49",
+    "position": [
+      -0.21731384363484785,
+      0.43009919716499945,
+      0.21371058090631
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y50": {
+    "id": "Y50",
+    "fibreId": "UNASSIGNED",
+    "region": "right_glove",
+    "label": "Calibration map - right_glove Y50",
+    "position": [
+      -0.283021424803951,
+      -0.3779759866868071,
+      -0.4987203514784604
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y51": {
+    "id": "Y51",
+    "fibreId": "UNASSIGNED",
+    "region": "left_leg",
+    "label": "Calibration map - left_leg Y51",
+    "position": [
+      0.32062943179566394,
+      -0.5350444523906923,
+      0.09150284481372362
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y52": {
+    "id": "Y52",
+    "fibreId": "UNASSIGNED",
+    "region": "right_leg",
+    "label": "Calibration map - right_leg Y52",
+    "position": [
+      0.3214487427125299,
+      -0.5413407091265534,
+      0.3732667227472043
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y53": {
+    "id": "Y53",
+    "fibreId": "UNASSIGNED",
+    "region": "left_boot",
+    "label": "Calibration map - left_boot Y53",
+    "position": [
+      -0.3276516454565719,
+      0.09279047739111657,
+      -0.17255426003859975
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y54": {
+    "id": "Y54",
+    "fibreId": "UNASSIGNED",
+    "region": "right_boot",
+    "label": "Calibration map - right_boot Y54",
+    "position": [
+      0.06302705782777818,
+      0.554659848154311,
+      -0.45771117691986174
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y55": {
+    "id": "Y55",
+    "fibreId": "UNASSIGNED",
+    "region": "helmet",
+    "label": "Calibration map - helmet Y55",
+    "position": [
+      0.1695294861170169,
+      -0.5623608588288149,
+      0.4763860006767159
+    ],
+    "uv": [
+      0,
+      0
+    ],
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  }
+}

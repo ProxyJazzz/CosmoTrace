@@ -1,0 +1,151 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  height: 100%;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.filters {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.filterBtn {
+  background: var(--bg-panel-light);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  padding: 0.25rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.filterBtn:hover {
+  background: rgba(0, 240, 255, 0.1);
+  color: var(--text-main);
+}
+
+.filterBtn.active {
+  background: rgba(0, 240, 255, 0.15);
+  color: var(--status-healthy);
+  border-color: var(--status-healthy);
+}
+
+.gridWrapper {
+  flex-grow: 1;
+  overflow-y: auto;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 0.5rem;
+  background-color: rgba(0, 0, 0, 0.2);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 0.5rem;
+}
+
+.sensorCard {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.sensorCard:hover {
+  border-color: var(--text-main);
+}
+
+.sensorCard.selected {
+  border-color: var(--status-healthy);
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
+}
+
+.sensorHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sensorId {
+  font-weight: 700;
+  font-size: 0.875rem;
+}
+
+.sensorReading {
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+
+.sensorRegion {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Status variants */
+.sensorCard.healthy {
+  border-color: rgba(0, 240, 255, 0.3);
+}
+.sensorCard.healthy .sensorId { color: var(--status-healthy); }
+
+.sensorCard.broken {
+  border-color: var(--status-fault);
+  background-color: rgba(255, 42, 42, 0.05);
+}
+.sensorCard.broken .sensorId { color: var(--status-fault); }
+
+.sensorCard.unknown {
+  border-color: rgba(255, 255, 255, 0.1);
+  opacity: 0.5;
+}
+.sensorCard.unknown .sensorId { color: var(--text-muted); }
+
+/* Event Log */
+.eventLog {
+  margin-top: 1rem;
+  border-top: 1px solid var(--border-color);
+  padding-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.eventItem {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  padding: 0.25rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.eventTime { color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.eventInfo { flex-grow: 1; margin: 0 1rem; }
+.eventStatus { font-weight: 600; color: var(--status-fault); }

@@ -1,0 +1,84 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+}
+
+.zoneCard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem;
+  border-radius: 6px;
+  background-color: var(--bg-panel-light);
+  border: 1px solid var(--border-color);
+  transition: all 0.2s;
+}
+
+.zoneCard:hover {
+  background-color: rgba(0, 240, 255, 0.05);
+}
+
+.zoneCard.broken {
+  border-color: var(--status-fault);
+  background-color: var(--status-fault-bg);
+}
+
+.zoneCard.warning {
+  border-color: var(--status-warning);
+  background-color: var(--status-warning-bg);
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.name {
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.status {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.status.healthy {
+  color: var(--status-healthy);
+  background-color: var(--status-healthy-bg);
+}
+
+.status.broken {
+  color: var(--status-fault);
+  background-color: var(--status-fault-bg);
+}
+
+.status.unknown {
+  color: var(--text-muted);
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.stats {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}

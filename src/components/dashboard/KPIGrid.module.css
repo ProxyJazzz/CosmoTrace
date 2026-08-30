@@ -1,0 +1,63 @@
+.grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 1rem;
+  padding: 1rem 2rem;
+}
+
+.kpiCard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  transition: all 0.2s;
+}
+
+.kpiCard:hover {
+  border-color: var(--status-healthy);
+  box-shadow: 0 0 15px rgba(0, 240, 255, 0.05);
+}
+
+.kpiHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.kpiValue {
+  font-size: 2rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.healthy {
+  color: var(--status-healthy);
+}
+
+.warning {
+  color: var(--status-warning);
+}
+
+.fault {
+  color: var(--status-fault);
+  text-shadow: 0 0 10px var(--status-fault-glow);
+}
+
+.unknown {
+  color: var(--status-unknown);
+}
+
+@media (max-width: 1200px) {
+  .grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .grid {
+    grid-template-columns: repeat(2, 1fr);
+    padding: 1rem;
+  }
+}

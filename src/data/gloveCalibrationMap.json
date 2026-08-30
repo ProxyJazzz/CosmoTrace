@@ -1,0 +1,2402 @@
+{
+  "X1": {
+    "id": "X1",
+    "hand": "left",
+    "finger": "thumb",
+    "region": "left_thumb",
+    "label": "Glove map - left_thumb X1",
+    "position": [
+      -0.3,
+      -0.1,
+      0
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-L-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X2": {
+    "id": "X2",
+    "hand": "left",
+    "finger": "index",
+    "region": "left_index_finger",
+    "label": "Glove map - left_index_finger X2",
+    "position": [
+      -0.3,
+      0,
+      0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-L-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X3": {
+    "id": "X3",
+    "hand": "left",
+    "finger": "middle",
+    "region": "left_middle_finger",
+    "label": "Glove map - left_middle_finger X3",
+    "position": [
+      -0.3,
+      0.10000000000000003,
+      -0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-L-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X4": {
+    "id": "X4",
+    "hand": "left",
+    "finger": "ring",
+    "region": "left_ring_finger",
+    "label": "Glove map - left_ring_finger X4",
+    "position": [
+      -0.3,
+      0.2,
+      0
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-L-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X5": {
+    "id": "X5",
+    "hand": "left",
+    "finger": "little",
+    "region": "left_little_finger",
+    "label": "Glove map - left_little_finger X5",
+    "position": [
+      -0.3,
+      -0.2,
+      0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-L-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X6": {
+    "id": "X6",
+    "hand": "left",
+    "finger": "palm",
+    "region": "left_palm",
+    "label": "Glove map - left_palm X6",
+    "position": [
+      -0.3,
+      -0.1,
+      -0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-L-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X7": {
+    "id": "X7",
+    "hand": "left",
+    "finger": "thumb",
+    "region": "left_thumb",
+    "label": "Glove map - left_thumb X7",
+    "position": [
+      -0.3,
+      0,
+      0
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-L-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X8": {
+    "id": "X8",
+    "hand": "left",
+    "finger": "index",
+    "region": "left_index_finger",
+    "label": "Glove map - left_index_finger X8",
+    "position": [
+      -0.3,
+      0.10000000000000003,
+      0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-L-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X9": {
+    "id": "X9",
+    "hand": "left",
+    "finger": "middle",
+    "region": "left_middle_finger",
+    "label": "Glove map - left_middle_finger X9",
+    "position": [
+      -0.3,
+      0.2,
+      -0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-L-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X10": {
+    "id": "X10",
+    "hand": "left",
+    "finger": "ring",
+    "region": "left_ring_finger",
+    "label": "Glove map - left_ring_finger X10",
+    "position": [
+      -0.3,
+      -0.2,
+      0
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-L-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X11": {
+    "id": "X11",
+    "hand": "left",
+    "finger": "little",
+    "region": "left_little_finger",
+    "label": "Glove map - left_little_finger X11",
+    "position": [
+      -0.3,
+      -0.1,
+      0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-L-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X12": {
+    "id": "X12",
+    "hand": "left",
+    "finger": "palm",
+    "region": "left_palm",
+    "label": "Glove map - left_palm X12",
+    "position": [
+      -0.3,
+      0,
+      -0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-L-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X13": {
+    "id": "X13",
+    "hand": "left",
+    "finger": "thumb",
+    "region": "left_thumb",
+    "label": "Glove map - left_thumb X13",
+    "position": [
+      -0.3,
+      0.10000000000000003,
+      0
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-L-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X14": {
+    "id": "X14",
+    "hand": "left",
+    "finger": "index",
+    "region": "left_index_finger",
+    "label": "Glove map - left_index_finger X14",
+    "position": [
+      -0.3,
+      0.2,
+      0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-L-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X15": {
+    "id": "X15",
+    "hand": "left",
+    "finger": "middle",
+    "region": "left_middle_finger",
+    "label": "Glove map - left_middle_finger X15",
+    "position": [
+      -0.3,
+      -0.2,
+      -0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-L-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X16": {
+    "id": "X16",
+    "hand": "left",
+    "finger": "ring",
+    "region": "left_ring_finger",
+    "label": "Glove map - left_ring_finger X16",
+    "position": [
+      -0.3,
+      -0.1,
+      0
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-L-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X17": {
+    "id": "X17",
+    "hand": "left",
+    "finger": "little",
+    "region": "left_little_finger",
+    "label": "Glove map - left_little_finger X17",
+    "position": [
+      -0.3,
+      0,
+      0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-L-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X18": {
+    "id": "X18",
+    "hand": "left",
+    "finger": "palm",
+    "region": "left_palm",
+    "label": "Glove map - left_palm X18",
+    "position": [
+      -0.3,
+      0.10000000000000003,
+      -0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-L-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X19": {
+    "id": "X19",
+    "hand": "left",
+    "finger": "thumb",
+    "region": "left_thumb",
+    "label": "Glove map - left_thumb X19",
+    "position": [
+      -0.3,
+      0.2,
+      0
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-L-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X20": {
+    "id": "X20",
+    "hand": "left",
+    "finger": "index",
+    "region": "left_index_finger",
+    "label": "Glove map - left_index_finger X20",
+    "position": [
+      -0.3,
+      -0.2,
+      0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-L-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X21": {
+    "id": "X21",
+    "hand": "left",
+    "finger": "middle",
+    "region": "left_middle_finger",
+    "label": "Glove map - left_middle_finger X21",
+    "position": [
+      -0.3,
+      -0.1,
+      -0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-L-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X22": {
+    "id": "X22",
+    "hand": "left",
+    "finger": "ring",
+    "region": "left_ring_finger",
+    "label": "Glove map - left_ring_finger X22",
+    "position": [
+      -0.3,
+      0,
+      0
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-L-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X23": {
+    "id": "X23",
+    "hand": "left",
+    "finger": "little",
+    "region": "left_little_finger",
+    "label": "Glove map - left_little_finger X23",
+    "position": [
+      -0.3,
+      0.10000000000000003,
+      0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-L-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X24": {
+    "id": "X24",
+    "hand": "left",
+    "finger": "palm",
+    "region": "left_palm",
+    "label": "Glove map - left_palm X24",
+    "position": [
+      -0.3,
+      0.2,
+      -0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-L-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X25": {
+    "id": "X25",
+    "hand": "left",
+    "finger": "thumb",
+    "region": "left_thumb",
+    "label": "Glove map - left_thumb X25",
+    "position": [
+      -0.3,
+      -0.2,
+      0
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-L-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X26": {
+    "id": "X26",
+    "hand": "left",
+    "finger": "index",
+    "region": "left_index_finger",
+    "label": "Glove map - left_index_finger X26",
+    "position": [
+      -0.3,
+      -0.1,
+      0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-L-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X27": {
+    "id": "X27",
+    "hand": "left",
+    "finger": "middle",
+    "region": "left_middle_finger",
+    "label": "Glove map - left_middle_finger X27",
+    "position": [
+      -0.3,
+      0,
+      -0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-L-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X28": {
+    "id": "X28",
+    "hand": "left",
+    "finger": "ring",
+    "region": "left_ring_finger",
+    "label": "Glove map - left_ring_finger X28",
+    "position": [
+      -0.3,
+      0.10000000000000003,
+      0
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-L-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X29": {
+    "id": "X29",
+    "hand": "left",
+    "finger": "little",
+    "region": "left_little_finger",
+    "label": "Glove map - left_little_finger X29",
+    "position": [
+      -0.3,
+      0.2,
+      0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-L-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X30": {
+    "id": "X30",
+    "hand": "left",
+    "finger": "palm",
+    "region": "left_palm",
+    "label": "Glove map - left_palm X30",
+    "position": [
+      -0.3,
+      -0.2,
+      -0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-L-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X31": {
+    "id": "X31",
+    "hand": "left",
+    "finger": "thumb",
+    "region": "left_thumb",
+    "label": "Glove map - left_thumb X31",
+    "position": [
+      -0.3,
+      -0.1,
+      0
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-L-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X32": {
+    "id": "X32",
+    "hand": "left",
+    "finger": "index",
+    "region": "left_index_finger",
+    "label": "Glove map - left_index_finger X32",
+    "position": [
+      -0.3,
+      0,
+      0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-L-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X33": {
+    "id": "X33",
+    "hand": "right",
+    "finger": "middle",
+    "region": "right_middle_finger",
+    "label": "Glove map - right_middle_finger X33",
+    "position": [
+      0.3,
+      0.10000000000000003,
+      -0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-R-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X34": {
+    "id": "X34",
+    "hand": "right",
+    "finger": "ring",
+    "region": "right_ring_finger",
+    "label": "Glove map - right_ring_finger X34",
+    "position": [
+      0.3,
+      0.2,
+      0
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-R-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X35": {
+    "id": "X35",
+    "hand": "right",
+    "finger": "little",
+    "region": "right_little_finger",
+    "label": "Glove map - right_little_finger X35",
+    "position": [
+      0.3,
+      -0.2,
+      0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-R-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X36": {
+    "id": "X36",
+    "hand": "right",
+    "finger": "palm",
+    "region": "right_palm",
+    "label": "Glove map - right_palm X36",
+    "position": [
+      0.3,
+      -0.1,
+      -0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-R-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X37": {
+    "id": "X37",
+    "hand": "right",
+    "finger": "thumb",
+    "region": "right_thumb",
+    "label": "Glove map - right_thumb X37",
+    "position": [
+      0.3,
+      0,
+      0
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-R-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X38": {
+    "id": "X38",
+    "hand": "right",
+    "finger": "index",
+    "region": "right_index_finger",
+    "label": "Glove map - right_index_finger X38",
+    "position": [
+      0.3,
+      0.10000000000000003,
+      0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-R-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X39": {
+    "id": "X39",
+    "hand": "right",
+    "finger": "middle",
+    "region": "right_middle_finger",
+    "label": "Glove map - right_middle_finger X39",
+    "position": [
+      0.3,
+      0.2,
+      -0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-R-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X40": {
+    "id": "X40",
+    "hand": "right",
+    "finger": "ring",
+    "region": "right_ring_finger",
+    "label": "Glove map - right_ring_finger X40",
+    "position": [
+      0.3,
+      -0.2,
+      0
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-R-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X41": {
+    "id": "X41",
+    "hand": "right",
+    "finger": "little",
+    "region": "right_little_finger",
+    "label": "Glove map - right_little_finger X41",
+    "position": [
+      0.3,
+      -0.1,
+      0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-R-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X42": {
+    "id": "X42",
+    "hand": "right",
+    "finger": "palm",
+    "region": "right_palm",
+    "label": "Glove map - right_palm X42",
+    "position": [
+      0.3,
+      0,
+      -0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-R-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X43": {
+    "id": "X43",
+    "hand": "right",
+    "finger": "thumb",
+    "region": "right_thumb",
+    "label": "Glove map - right_thumb X43",
+    "position": [
+      0.3,
+      0.10000000000000003,
+      0
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-R-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X44": {
+    "id": "X44",
+    "hand": "right",
+    "finger": "index",
+    "region": "right_index_finger",
+    "label": "Glove map - right_index_finger X44",
+    "position": [
+      0.3,
+      0.2,
+      0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-R-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X45": {
+    "id": "X45",
+    "hand": "right",
+    "finger": "middle",
+    "region": "right_middle_finger",
+    "label": "Glove map - right_middle_finger X45",
+    "position": [
+      0.3,
+      -0.2,
+      -0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-R-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X46": {
+    "id": "X46",
+    "hand": "right",
+    "finger": "ring",
+    "region": "right_ring_finger",
+    "label": "Glove map - right_ring_finger X46",
+    "position": [
+      0.3,
+      -0.1,
+      0
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-R-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X47": {
+    "id": "X47",
+    "hand": "right",
+    "finger": "little",
+    "region": "right_little_finger",
+    "label": "Glove map - right_little_finger X47",
+    "position": [
+      0.3,
+      0,
+      0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-R-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X48": {
+    "id": "X48",
+    "hand": "right",
+    "finger": "palm",
+    "region": "right_palm",
+    "label": "Glove map - right_palm X48",
+    "position": [
+      0.3,
+      0.10000000000000003,
+      -0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-R-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X49": {
+    "id": "X49",
+    "hand": "right",
+    "finger": "thumb",
+    "region": "right_thumb",
+    "label": "Glove map - right_thumb X49",
+    "position": [
+      0.3,
+      0.2,
+      0
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-R-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X50": {
+    "id": "X50",
+    "hand": "right",
+    "finger": "index",
+    "region": "right_index_finger",
+    "label": "Glove map - right_index_finger X50",
+    "position": [
+      0.3,
+      -0.2,
+      0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-R-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X51": {
+    "id": "X51",
+    "hand": "right",
+    "finger": "middle",
+    "region": "right_middle_finger",
+    "label": "Glove map - right_middle_finger X51",
+    "position": [
+      0.3,
+      -0.1,
+      -0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-R-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X52": {
+    "id": "X52",
+    "hand": "right",
+    "finger": "ring",
+    "region": "right_ring_finger",
+    "label": "Glove map - right_ring_finger X52",
+    "position": [
+      0.3,
+      0,
+      0
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-R-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X53": {
+    "id": "X53",
+    "hand": "right",
+    "finger": "little",
+    "region": "right_little_finger",
+    "label": "Glove map - right_little_finger X53",
+    "position": [
+      0.3,
+      0.10000000000000003,
+      0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-R-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X54": {
+    "id": "X54",
+    "hand": "right",
+    "finger": "palm",
+    "region": "right_palm",
+    "label": "Glove map - right_palm X54",
+    "position": [
+      0.3,
+      0.2,
+      -0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-R-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X55": {
+    "id": "X55",
+    "hand": "right",
+    "finger": "thumb",
+    "region": "right_thumb",
+    "label": "Glove map - right_thumb X55",
+    "position": [
+      0.3,
+      -0.2,
+      0
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-R-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X56": {
+    "id": "X56",
+    "hand": "right",
+    "finger": "index",
+    "region": "right_index_finger",
+    "label": "Glove map - right_index_finger X56",
+    "position": [
+      0.3,
+      -0.1,
+      0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-R-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X57": {
+    "id": "X57",
+    "hand": "right",
+    "finger": "middle",
+    "region": "right_middle_finger",
+    "label": "Glove map - right_middle_finger X57",
+    "position": [
+      0.3,
+      0,
+      -0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-R-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X58": {
+    "id": "X58",
+    "hand": "right",
+    "finger": "ring",
+    "region": "right_ring_finger",
+    "label": "Glove map - right_ring_finger X58",
+    "position": [
+      0.3,
+      0.10000000000000003,
+      0
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-R-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X59": {
+    "id": "X59",
+    "hand": "right",
+    "finger": "little",
+    "region": "right_little_finger",
+    "label": "Glove map - right_little_finger X59",
+    "position": [
+      0.3,
+      0.2,
+      0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-R-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X60": {
+    "id": "X60",
+    "hand": "right",
+    "finger": "palm",
+    "region": "right_palm",
+    "label": "Glove map - right_palm X60",
+    "position": [
+      0.3,
+      -0.2,
+      -0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-R-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X61": {
+    "id": "X61",
+    "hand": "right",
+    "finger": "thumb",
+    "region": "right_thumb",
+    "label": "Glove map - right_thumb X61",
+    "position": [
+      0.3,
+      -0.1,
+      0
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-R-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X62": {
+    "id": "X62",
+    "hand": "right",
+    "finger": "index",
+    "region": "right_index_finger",
+    "label": "Glove map - right_index_finger X62",
+    "position": [
+      0.3,
+      0,
+      0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-R-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X63": {
+    "id": "X63",
+    "hand": "right",
+    "finger": "middle",
+    "region": "right_middle_finger",
+    "label": "Glove map - right_middle_finger X63",
+    "position": [
+      0.3,
+      0.10000000000000003,
+      -0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-R-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X64": {
+    "id": "X64",
+    "hand": "right",
+    "finger": "ring",
+    "region": "right_ring_finger",
+    "label": "Glove map - right_ring_finger X64",
+    "position": [
+      0.3,
+      0.2,
+      0
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-R-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "X65": {
+    "id": "X65",
+    "hand": "right",
+    "finger": "little",
+    "region": "right_little_finger",
+    "label": "Glove map - right_little_finger X65",
+    "position": [
+      0.3,
+      -0.2,
+      0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-R-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y1": {
+    "id": "Y1",
+    "hand": "left",
+    "finger": "thumb",
+    "region": "left_thumb",
+    "label": "Glove map - left_thumb Y1",
+    "position": [
+      -0.3,
+      -0.1,
+      0
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-L-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y2": {
+    "id": "Y2",
+    "hand": "left",
+    "finger": "index",
+    "region": "left_index_finger",
+    "label": "Glove map - left_index_finger Y2",
+    "position": [
+      -0.3,
+      0,
+      0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-L-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y3": {
+    "id": "Y3",
+    "hand": "left",
+    "finger": "middle",
+    "region": "left_middle_finger",
+    "label": "Glove map - left_middle_finger Y3",
+    "position": [
+      -0.3,
+      0.10000000000000003,
+      -0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-L-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y4": {
+    "id": "Y4",
+    "hand": "left",
+    "finger": "ring",
+    "region": "left_ring_finger",
+    "label": "Glove map - left_ring_finger Y4",
+    "position": [
+      -0.3,
+      0.2,
+      0
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-L-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y5": {
+    "id": "Y5",
+    "hand": "left",
+    "finger": "little",
+    "region": "left_little_finger",
+    "label": "Glove map - left_little_finger Y5",
+    "position": [
+      -0.3,
+      -0.2,
+      0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-L-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y6": {
+    "id": "Y6",
+    "hand": "left",
+    "finger": "palm",
+    "region": "left_palm",
+    "label": "Glove map - left_palm Y6",
+    "position": [
+      -0.3,
+      -0.1,
+      -0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-L-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y7": {
+    "id": "Y7",
+    "hand": "left",
+    "finger": "thumb",
+    "region": "left_thumb",
+    "label": "Glove map - left_thumb Y7",
+    "position": [
+      -0.3,
+      0,
+      0
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-L-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y8": {
+    "id": "Y8",
+    "hand": "left",
+    "finger": "index",
+    "region": "left_index_finger",
+    "label": "Glove map - left_index_finger Y8",
+    "position": [
+      -0.3,
+      0.10000000000000003,
+      0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-L-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y9": {
+    "id": "Y9",
+    "hand": "left",
+    "finger": "middle",
+    "region": "left_middle_finger",
+    "label": "Glove map - left_middle_finger Y9",
+    "position": [
+      -0.3,
+      0.2,
+      -0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-L-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y10": {
+    "id": "Y10",
+    "hand": "left",
+    "finger": "ring",
+    "region": "left_ring_finger",
+    "label": "Glove map - left_ring_finger Y10",
+    "position": [
+      -0.3,
+      -0.2,
+      0
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-L-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y11": {
+    "id": "Y11",
+    "hand": "left",
+    "finger": "little",
+    "region": "left_little_finger",
+    "label": "Glove map - left_little_finger Y11",
+    "position": [
+      -0.3,
+      -0.1,
+      0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-L-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y12": {
+    "id": "Y12",
+    "hand": "left",
+    "finger": "palm",
+    "region": "left_palm",
+    "label": "Glove map - left_palm Y12",
+    "position": [
+      -0.3,
+      0,
+      -0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-L-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y13": {
+    "id": "Y13",
+    "hand": "left",
+    "finger": "thumb",
+    "region": "left_thumb",
+    "label": "Glove map - left_thumb Y13",
+    "position": [
+      -0.3,
+      0.10000000000000003,
+      0
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-L-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y14": {
+    "id": "Y14",
+    "hand": "left",
+    "finger": "index",
+    "region": "left_index_finger",
+    "label": "Glove map - left_index_finger Y14",
+    "position": [
+      -0.3,
+      0.2,
+      0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-L-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y15": {
+    "id": "Y15",
+    "hand": "left",
+    "finger": "middle",
+    "region": "left_middle_finger",
+    "label": "Glove map - left_middle_finger Y15",
+    "position": [
+      -0.3,
+      -0.2,
+      -0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-L-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y16": {
+    "id": "Y16",
+    "hand": "left",
+    "finger": "ring",
+    "region": "left_ring_finger",
+    "label": "Glove map - left_ring_finger Y16",
+    "position": [
+      -0.3,
+      -0.1,
+      0
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-L-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y17": {
+    "id": "Y17",
+    "hand": "left",
+    "finger": "little",
+    "region": "left_little_finger",
+    "label": "Glove map - left_little_finger Y17",
+    "position": [
+      -0.3,
+      0,
+      0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-L-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y18": {
+    "id": "Y18",
+    "hand": "left",
+    "finger": "palm",
+    "region": "left_palm",
+    "label": "Glove map - left_palm Y18",
+    "position": [
+      -0.3,
+      0.10000000000000003,
+      -0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-L-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y19": {
+    "id": "Y19",
+    "hand": "left",
+    "finger": "thumb",
+    "region": "left_thumb",
+    "label": "Glove map - left_thumb Y19",
+    "position": [
+      -0.3,
+      0.2,
+      0
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-L-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y20": {
+    "id": "Y20",
+    "hand": "left",
+    "finger": "index",
+    "region": "left_index_finger",
+    "label": "Glove map - left_index_finger Y20",
+    "position": [
+      -0.3,
+      -0.2,
+      0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-L-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y21": {
+    "id": "Y21",
+    "hand": "left",
+    "finger": "middle",
+    "region": "left_middle_finger",
+    "label": "Glove map - left_middle_finger Y21",
+    "position": [
+      -0.3,
+      -0.1,
+      -0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-L-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y22": {
+    "id": "Y22",
+    "hand": "left",
+    "finger": "ring",
+    "region": "left_ring_finger",
+    "label": "Glove map - left_ring_finger Y22",
+    "position": [
+      -0.3,
+      0,
+      0
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-L-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y23": {
+    "id": "Y23",
+    "hand": "left",
+    "finger": "little",
+    "region": "left_little_finger",
+    "label": "Glove map - left_little_finger Y23",
+    "position": [
+      -0.3,
+      0.10000000000000003,
+      0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-L-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y24": {
+    "id": "Y24",
+    "hand": "left",
+    "finger": "palm",
+    "region": "left_palm",
+    "label": "Glove map - left_palm Y24",
+    "position": [
+      -0.3,
+      0.2,
+      -0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-L-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y25": {
+    "id": "Y25",
+    "hand": "left",
+    "finger": "thumb",
+    "region": "left_thumb",
+    "label": "Glove map - left_thumb Y25",
+    "position": [
+      -0.3,
+      -0.2,
+      0
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-L-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y26": {
+    "id": "Y26",
+    "hand": "left",
+    "finger": "index",
+    "region": "left_index_finger",
+    "label": "Glove map - left_index_finger Y26",
+    "position": [
+      -0.3,
+      -0.1,
+      0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-L-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y27": {
+    "id": "Y27",
+    "hand": "left",
+    "finger": "middle",
+    "region": "left_middle_finger",
+    "label": "Glove map - left_middle_finger Y27",
+    "position": [
+      -0.3,
+      0,
+      -0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-L-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y28": {
+    "id": "Y28",
+    "hand": "right",
+    "finger": "ring",
+    "region": "right_ring_finger",
+    "label": "Glove map - right_ring_finger Y28",
+    "position": [
+      0.3,
+      0.10000000000000003,
+      0
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-R-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y29": {
+    "id": "Y29",
+    "hand": "right",
+    "finger": "little",
+    "region": "right_little_finger",
+    "label": "Glove map - right_little_finger Y29",
+    "position": [
+      0.3,
+      0.2,
+      0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-R-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y30": {
+    "id": "Y30",
+    "hand": "right",
+    "finger": "palm",
+    "region": "right_palm",
+    "label": "Glove map - right_palm Y30",
+    "position": [
+      0.3,
+      -0.2,
+      -0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-R-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y31": {
+    "id": "Y31",
+    "hand": "right",
+    "finger": "thumb",
+    "region": "right_thumb",
+    "label": "Glove map - right_thumb Y31",
+    "position": [
+      0.3,
+      -0.1,
+      0
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-R-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y32": {
+    "id": "Y32",
+    "hand": "right",
+    "finger": "index",
+    "region": "right_index_finger",
+    "label": "Glove map - right_index_finger Y32",
+    "position": [
+      0.3,
+      0,
+      0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-R-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y33": {
+    "id": "Y33",
+    "hand": "right",
+    "finger": "middle",
+    "region": "right_middle_finger",
+    "label": "Glove map - right_middle_finger Y33",
+    "position": [
+      0.3,
+      0.10000000000000003,
+      -0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-R-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y34": {
+    "id": "Y34",
+    "hand": "right",
+    "finger": "ring",
+    "region": "right_ring_finger",
+    "label": "Glove map - right_ring_finger Y34",
+    "position": [
+      0.3,
+      0.2,
+      0
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-R-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y35": {
+    "id": "Y35",
+    "hand": "right",
+    "finger": "little",
+    "region": "right_little_finger",
+    "label": "Glove map - right_little_finger Y35",
+    "position": [
+      0.3,
+      -0.2,
+      0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-R-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y36": {
+    "id": "Y36",
+    "hand": "right",
+    "finger": "palm",
+    "region": "right_palm",
+    "label": "Glove map - right_palm Y36",
+    "position": [
+      0.3,
+      -0.1,
+      -0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-R-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y37": {
+    "id": "Y37",
+    "hand": "right",
+    "finger": "thumb",
+    "region": "right_thumb",
+    "label": "Glove map - right_thumb Y37",
+    "position": [
+      0.3,
+      0,
+      0
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-R-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y38": {
+    "id": "Y38",
+    "hand": "right",
+    "finger": "index",
+    "region": "right_index_finger",
+    "label": "Glove map - right_index_finger Y38",
+    "position": [
+      0.3,
+      0.10000000000000003,
+      0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-R-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y39": {
+    "id": "Y39",
+    "hand": "right",
+    "finger": "middle",
+    "region": "right_middle_finger",
+    "label": "Glove map - right_middle_finger Y39",
+    "position": [
+      0.3,
+      0.2,
+      -0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-R-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y40": {
+    "id": "Y40",
+    "hand": "right",
+    "finger": "ring",
+    "region": "right_ring_finger",
+    "label": "Glove map - right_ring_finger Y40",
+    "position": [
+      0.3,
+      -0.2,
+      0
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-R-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y41": {
+    "id": "Y41",
+    "hand": "right",
+    "finger": "little",
+    "region": "right_little_finger",
+    "label": "Glove map - right_little_finger Y41",
+    "position": [
+      0.3,
+      -0.1,
+      0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-R-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y42": {
+    "id": "Y42",
+    "hand": "right",
+    "finger": "palm",
+    "region": "right_palm",
+    "label": "Glove map - right_palm Y42",
+    "position": [
+      0.3,
+      0,
+      -0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-R-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y43": {
+    "id": "Y43",
+    "hand": "right",
+    "finger": "thumb",
+    "region": "right_thumb",
+    "label": "Glove map - right_thumb Y43",
+    "position": [
+      0.3,
+      0.10000000000000003,
+      0
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-R-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y44": {
+    "id": "Y44",
+    "hand": "right",
+    "finger": "index",
+    "region": "right_index_finger",
+    "label": "Glove map - right_index_finger Y44",
+    "position": [
+      0.3,
+      0.2,
+      0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-R-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y45": {
+    "id": "Y45",
+    "hand": "right",
+    "finger": "middle",
+    "region": "right_middle_finger",
+    "label": "Glove map - right_middle_finger Y45",
+    "position": [
+      0.3,
+      -0.2,
+      -0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-R-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y46": {
+    "id": "Y46",
+    "hand": "right",
+    "finger": "ring",
+    "region": "right_ring_finger",
+    "label": "Glove map - right_ring_finger Y46",
+    "position": [
+      0.3,
+      -0.1,
+      0
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-R-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y47": {
+    "id": "Y47",
+    "hand": "right",
+    "finger": "little",
+    "region": "right_little_finger",
+    "label": "Glove map - right_little_finger Y47",
+    "position": [
+      0.3,
+      0,
+      0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-R-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y48": {
+    "id": "Y48",
+    "hand": "right",
+    "finger": "palm",
+    "region": "right_palm",
+    "label": "Glove map - right_palm Y48",
+    "position": [
+      0.3,
+      0.10000000000000003,
+      -0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-R-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y49": {
+    "id": "Y49",
+    "hand": "right",
+    "finger": "thumb",
+    "region": "right_thumb",
+    "label": "Glove map - right_thumb Y49",
+    "position": [
+      0.3,
+      0.2,
+      0
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-R-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y50": {
+    "id": "Y50",
+    "hand": "right",
+    "finger": "index",
+    "region": "right_index_finger",
+    "label": "Glove map - right_index_finger Y50",
+    "position": [
+      0.3,
+      -0.2,
+      0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-R-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y51": {
+    "id": "Y51",
+    "hand": "right",
+    "finger": "middle",
+    "region": "right_middle_finger",
+    "label": "Glove map - right_middle_finger Y51",
+    "position": [
+      0.3,
+      -0.1,
+      -0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-R-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y52": {
+    "id": "Y52",
+    "hand": "right",
+    "finger": "ring",
+    "region": "right_ring_finger",
+    "label": "Glove map - right_ring_finger Y52",
+    "position": [
+      0.3,
+      0,
+      0
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-R-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y53": {
+    "id": "Y53",
+    "hand": "right",
+    "finger": "little",
+    "region": "right_little_finger",
+    "label": "Glove map - right_little_finger Y53",
+    "position": [
+      0.3,
+      0.10000000000000003,
+      0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-R-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y54": {
+    "id": "Y54",
+    "hand": "right",
+    "finger": "palm",
+    "region": "right_palm",
+    "label": "Glove map - right_palm Y54",
+    "position": [
+      0.3,
+      0.2,
+      -0.1
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-R-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  },
+  "Y55": {
+    "id": "Y55",
+    "hand": "right",
+    "finger": "thumb",
+    "region": "right_thumb",
+    "label": "Glove map - right_thumb Y55",
+    "position": [
+      0.3,
+      -0.2,
+      0
+    ],
+    "uv": [
+      0.5,
+      0.5
+    ],
+    "fibreId": "GLOVE-R-01",
+    "distanceAlongFibreMm": 0,
+    "sensorSpacingMm": 0,
+    "confidence": "placeholder"
+  }
+}
