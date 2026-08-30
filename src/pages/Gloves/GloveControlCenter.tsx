@@ -161,6 +161,11 @@ export const GloveControlCenter: React.FC = () => {
             Last scan: {lastScanTime}
           </div>
 
+          <Link to="/gloves/live" className={`${styles.btn} ${styles.primary}`}>
+            <Activity size={15} />
+            Live 2D Status
+          </Link>
+
           <Link to="/gloves/calibration" className={styles.btn}>
             <PenTool size={15} />
             Glove Calibration

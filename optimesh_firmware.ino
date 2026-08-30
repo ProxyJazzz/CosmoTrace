@@ -1,7 +1,7 @@
 /*
-  OptiMesh EVA — Fiber Grid Scanner (V1 prototype)
+  OptiMesh EVA — Fiber Grid Scanner (120-channel)
   ESP32 + 2x CD74HC4067 16-channel muxes
-  10 X-fibers (emitters, horizontal) x 10 Y-fibers (receivers, vertical)
+  12 X-fibers (emitters, horizontal) x 10 Y-fibers (receivers, vertical)
 
   WIRING (adjust pins to your actual build):
   --------------------------------------------
@@ -31,13 +31,13 @@
 
     F,<timestamp_ms>,<bitmask_hex>\n
 
-  bitmask_hex = 100-bit grid (10x10) packed as 25 hex chars (100 bits),
+  bitmask_hex = 120-bit grid (12x10) packed as 30 hex chars (120 bits),
   MSB-first, row-major (X0Y0, X0Y1, ... X0Y9, X1Y0, ...).
   A '1' bit = FAULT (broken/blocked fiber junction), '0' = OK.
 
   Example:
-    F,184320,0000000000000000000000004\n
-    (only the last junction, X9Y9, is faulted)
+    F,184320,000000000000000000000000000004\n
+    (only the last junction is faulted)
 
   This keeps the line short, fixed-format, and trivial to parse in JS
   with no JSON overhead — good for a tight polling loop over Web Serial.
@@ -63,7 +63,7 @@ const int Y_S2 = 23;
 const int Y_S3 = 25;
 const int Y_SIG = 34;     // ADC input from selected phototransistor
 
-const int GRID_X = 10;
+const int GRID_X = 12;
 const int GRID_Y = 10;
 
 // ---- Calibration ----
@@ -135,11 +135,11 @@ void scanGrid() {
 }
 
 void sendFrame() {
-  // Pack 100 bits row-major into 25 hex chars.
-  char hexbuf[26];
-  hexbuf[25] = '\0';
+  // Pack 120 bits row-major into 30 hex chars (120 bits / 4 = 30 hex chars).
+  char hexbuf[31];
+  hexbuf[30] = '\0';
 
-  uint8_t bitBuf[13] = {0}; // 100 bits -> 13 bytes (104 bits, top 4 unused)
+  uint8_t bitBuf[15] = {0}; // 120 bits -> 15 bytes (15 * 8 = 120 bits exactly)
   int bitIndex = 0;
   for (int xi = 0; xi < GRID_X; xi++) {
     for (int yi = 0; yi < GRID_Y; yi++) {
@@ -152,17 +152,14 @@ void sendFrame() {
     }
   }
 
-  // Convert 13 bytes -> 26 hex chars, then trim to 25 (last nibble unused,
-  // since 100 bits = 25 hex chars exactly if we pack tightly instead).
-  // Simpler: build hex directly from the bit buffer as nibbles.
-  int nibbleCount = 25; // 100 bits / 4 = 25 nibbles exactly
+  int nibbleCount = 30; // 120 bits / 4 = 30 nibbles exactly
   for (int n = 0; n < nibbleCount; n++) {
     int bitStart = n * 4;
     uint8_t nibble = 0;
     for (int b = 0; b < 4; b++) {
       int bi = bitStart + b;
       bool bit = false;
-      if (bi < 100) {
+      if (bi < 120) {
         int byteIdx = bi / 8;
         int bitOff = 7 - (bi % 8);
         bit = (bitBuf[byteIdx] >> bitOff) & 0x01;

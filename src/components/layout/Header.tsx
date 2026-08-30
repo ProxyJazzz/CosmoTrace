@@ -39,6 +39,11 @@ export const Header: React.FC = () => {
           Glove Control Center
         </Link>
 
+        <Link to="/gloves/live" className={styles.demoToggle} style={{ textDecoration: 'none', borderColor: 'var(--status-healthy)', color: 'var(--status-healthy)' }}>
+          <Activity size={16} />
+          Live 2D Status
+        </Link>
+
         <Link to="/calibration" className={styles.demoToggle} style={{ textDecoration: 'none' }}>
           <PenTool size={16} />
           Calibration Studio
