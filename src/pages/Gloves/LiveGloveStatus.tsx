@@ -15,7 +15,9 @@ import {
   Info
 } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
-import type { GloveCalibrationMap, GloveRegion, GloveHand, GloveFinger } from '../../types';
+import { OptiMeshSerial } from '../../utils/optimesh-serial';
+import type { ChannelMap } from '../../utils/optimesh-serial';
+import type { GloveCalibrationMap, GloveRegion, GloveHand, GloveFinger, RawData, PerChannelData, ZoneStatus, SensorData } from '../../types';
 import styles from './LiveGloveStatus.module.css';
 
 // Zone definitions for Left and Right hands
@@ -52,7 +54,10 @@ export const LiveGloveStatus: React.FC = () => {
     gloveCalibrationMap, 
     setGloveCalibrationMap, 
     sensorData, 
-    connectionState 
+    setSensorData,
+    connectionState,
+    setConnectionState,
+    addEventLogEntry
   } = useAppStore();
 
   const [activeHand, setActiveHand] = useState<GloveHand>('left');
@@ -61,18 +66,91 @@ export const LiveGloveStatus: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isConnecting, setIsConnecting] = useState(false);
   const [simulatedFaults, setSimulatedFaults] = useState<Record<string, boolean>>({});
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // 1. Placeholder connectToESP32 function (stubbed out per prompt instructions)
+  // Instantiated OptiMeshSerial bridge with onGridUpdate (v2 channelMap: 1-120) and onStatus handlers
+  const bridge = React.useMemo(() => {
+    const onGridUpdate = (channelMap: ChannelMap) => {
+      const raw: RawData = {};
+      const perChannel: PerChannelData = {};
+      const brokenChannels: string[] = [];
+      const zoneStatus: ZoneStatus = {};
+      const timestampMs = Date.now();
+
+      Object.entries(channelMap).forEach(([studioNumStr, entry]) => {
+        const studioNum = parseInt(studioNumStr, 10);
+        const channelId = `X${studioNum}`; // Studio channel key e.g. X1..X120
+
+        raw[channelId] = entry.value;
+        perChannel[channelId] = entry.fault ? 'BROKEN' : 'OK';
+
+        if (entry.fault) {
+          brokenChannels.push(channelId);
+
+          const region = gloveCalibrationMap[channelId]?.region;
+          if (region) {
+            zoneStatus[region] = 'BROKEN';
+          }
+
+          addEventLogEntry({
+            id: `evt-${timestampMs}-${channelId}`,
+            timestamp: timestampMs,
+            channelId,
+            reading: entry.value,
+            region: (region ? 'left_glove' : 'left_glove') as any,
+            status: 'BROKEN'
+          });
+        }
+      });
+
+      const updatedSensorData: SensorData = {
+        timestamp: timestampMs,
+        raw,
+        perChannel,
+        zoneStatus,
+        brokenChannels
+      };
+
+      setSensorData(updatedSensorData);
+      setConnectionState('LIVE');
+    };
+
+    const onStatus = (connected: boolean, message?: string) => {
+      if (connected) {
+        setConnectionState('LIVE');
+        setErrorMessage(null);
+      } else {
+        setConnectionState('DISCONNECTED');
+        if (message && message !== 'ESP32 disconnected') {
+          setErrorMessage(message);
+        }
+      }
+    };
+
+    return new OptiMeshSerial(onGridUpdate, onStatus);
+  }, [gloveCalibrationMap, setSensorData, setConnectionState, addEventLogEntry]);
+
+  // Clean up serial port connection on unmount
+  React.useEffect(() => {
+    return () => {
+      bridge.disconnect();
+    };
+  }, [bridge]);
+
+  // Real connection implementation using bridge.connect(115200)
   const connectToESP32 = async () => {
     setIsConnecting(true);
-    console.log('[LiveGloveStatus] connectToESP32() called - awaiting Web Serial integration bridge');
-    
-    // Simulate connection flow or placeholder feedback
-    setTimeout(() => {
+    setErrorMessage(null);
+
+    try {
+      await bridge.connect(115200);
+    } catch (err: any) {
+      console.error('[LiveGloveStatus] Serial connection failed:', err);
+      const msg = err?.message || 'Failed to open Web Serial port or browser context does not support Web Serial.';
+      setErrorMessage(msg);
+    } finally {
       setIsConnecting(false);
-      // Inform the user that bridge integration is stubbed
-      alert('connectToESP32() placeholder called. Ready to bind to optimesh-serial module once import is configured.');
-    }, 400);
+    }
   };
 
   // 2. Handle Import of freshly exported Calibration JSON
@@ -221,6 +299,32 @@ export const LiveGloveStatus: React.FC = () => {
           </button>
         </div>
       </header>
+
+      {errorMessage && (
+        <div style={{
+          background: 'rgba(255, 42, 42, 0.15)',
+          border: '1px solid var(--status-fault)',
+          color: '#ff6b6b',
+          padding: '8px 16px',
+          margin: '0.5rem 1rem 0',
+          borderRadius: '6px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          fontSize: '0.85rem'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <AlertTriangle size={16} color="var(--status-fault)" />
+            <span><strong>Serial Error:</strong> {errorMessage}</span>
+          </div>
+          <button 
+            onClick={() => setErrorMessage(null)}
+            style={{ background: 'none', border: 'none', color: '#ff6b6b', cursor: 'pointer', fontWeight: 'bold' }}
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* KPI Stats Bar */}
       <div className={styles.kpiBar}>

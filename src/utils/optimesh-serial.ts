@@ -5,28 +5,49 @@
  * Parses frames formatted as: F,<timestamp_ms>,<25-char-hex-bitmask>\n
  */
 
-export type FaultGrid = boolean[][]; // 10x10 grid (true = faulted junction, false = OK)
+export interface ChannelEntry {
+  firmwareKey: string;
+  value: number;
+  fault: boolean;
+}
+
+export type ChannelMap = Record<number, ChannelEntry>;
+
+export const FAULT_THRESHOLD = 200; // ADC below this = fault. Healthy baseline ~450-550.
+
+export function studioChannelToFirmwareKey(studioChannelNum: number): string {
+  if (studioChannelNum <= 65) return `X${studioChannelNum}`;
+  return `Y${studioChannelNum - 65}`;
+}
+
+export function firmwareKeyToStudioChannel(firmwareKey: string): number | null {
+  const match = firmwareKey.match(/^([XY])(\d+)$/);
+  if (!match) return null;
+  const [, axis, numStr] = match;
+  const num = parseInt(numStr, 10);
+  return axis === 'X' ? num : num + 65;
+}
 
 export class OptiMeshSerial {
   private port: SerialPort | null = null;
   private reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
   private keepReading = false;
-  private onGridUpdateCallback: ((faultGrid: FaultGrid, timestampMs: number) => void) | null = null;
-  private onStatusChangeCallback: ((connected: boolean) => void) | null = null;
+  private onGridUpdateCallback: ((channelMap: ChannelMap) => void) | null = null;
+  private onStatusChangeCallback: ((connected: boolean, message?: string) => void) | null = null;
 
   constructor(
-    onGridUpdate?: (faultGrid: FaultGrid, timestampMs: number) => void,
-    onStatusChange?: (connected: boolean) => void
+    onGridUpdate?: (channelMap: ChannelMap) => void,
+    onStatusChange?: (connected: boolean, message?: string) => void
   ) {
     if (onGridUpdate) this.onGridUpdateCallback = onGridUpdate;
     if (onStatusChange) this.onStatusChangeCallback = onStatusChange;
   }
 
-  public setGridUpdateCallback(cb: (faultGrid: FaultGrid, timestampMs: number) => void) {
+  public setGridUpdateCallback(cb: (channelMap: ChannelMap) => void) {
     this.onGridUpdateCallback = cb;
   }
 
-  public setStatusChangeCallback(cb: (connected: boolean) => void) {
+  public setStatusChangeCallback(cb: (connected: boolean, message?: string) => void) {
     this.onStatusChangeCallback = cb;
   }
 
@@ -35,6 +56,9 @@ export class OptiMeshSerial {
    */
   public async connect(baudRate = 115200): Promise<boolean> {
     if (!('serial' in navigator)) {
+      if (this.onStatusChangeCallback) {
+        this.onStatusChangeCallback(false, 'Web Serial not supported — use Chrome or Edge.');
+      }
       throw new Error('Web Serial API is not supported in this browser. Please use Chrome, Edge, or Opera over HTTPS/localhost.');
     }
 
@@ -44,14 +68,15 @@ export class OptiMeshSerial {
       await this.port.open({ baudRate });
       this.keepReading = true;
 
-      if (this.onStatusChangeCallback) this.onStatusChangeCallback(true);
+      if (this.onStatusChangeCallback) this.onStatusChangeCallback(true, 'ESP32 connected');
 
       // Start reading stream in background
       this.readLoop();
       return true;
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to connect over Web Serial:', err);
-      if (this.onStatusChangeCallback) this.onStatusChangeCallback(false);
+      const errMsg = err?.message || 'Failed to open serial port';
+      if (this.onStatusChangeCallback) this.onStatusChangeCallback(false, errMsg);
       throw err;
     }
   }
@@ -80,7 +105,7 @@ export class OptiMeshSerial {
       this.port = null;
     }
 
-    if (this.onStatusChangeCallback) this.onStatusChangeCallback(false);
+    if (this.onStatusChangeCallback) this.onStatusChangeCallback(false, 'ESP32 disconnected');
   }
 
   /**
@@ -106,12 +131,15 @@ export class OptiMeshSerial {
           buffer = lines.pop() || '';
 
           for (const line of lines) {
-            this.parseFrame(line.trim());
+            this.parseLine(line.trim());
           }
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error reading serial stream:', error);
+      if (this.onStatusChangeCallback) {
+        this.onStatusChangeCallback(false, 'Serial read error: ' + (error?.message || 'Unknown error'));
+      }
     } finally {
       if (this.reader) {
         try {
@@ -124,42 +152,33 @@ export class OptiMeshSerial {
   }
 
   /**
-   * Parses frame line format: F,<timestamp_ms>,<25-char-hex-bitmask>
+   * Parses JSON line format: {"X1":542,"X2":509,...,"Y55":515}
    */
-  private parseFrame(line: string): void {
-    if (!line.startsWith('F,')) return;
+  private parseLine(line: string): void {
+    if (!line.startsWith('{')) return;
 
-    const parts = line.split(',');
-    if (parts.length < 3) return;
+    let reading: Record<string, number>;
+    try {
+      reading = JSON.parse(line);
+    } catch (e) {
+      return;
+    }
 
-    const timestampMs = parseInt(parts[1], 10) || Date.now();
-    const hexBitmask = parts[2].trim();
-
-    if (hexBitmask.length !== 25) return; // 25 hex chars = 100 bits
-
-    // Decode 25 hex characters into 100 bits (10x10 matrix)
-    const faultGrid: FaultGrid = Array.from({ length: 10 }, () => Array(10).fill(false));
-    let bitIndex = 0;
-
-    for (let i = 0; i < hexBitmask.length; i++) {
-      const hexNibble = parseInt(hexBitmask[i], 16);
-      if (isNaN(hexNibble)) continue;
-
-      // Extract 4 bits from nibble (MSB to LSB)
-      for (let b = 3; b >= 0; b--) {
-        if (bitIndex >= 100) break;
-
-        const isFaulted = ((hexNibble >> b) & 1) === 1;
-        const x = Math.floor(bitIndex / 10);
-        const y = bitIndex % 10;
-
-        faultGrid[x][y] = isFaulted;
-        bitIndex++;
-      }
+    const channelMap: ChannelMap = {};
+    for (const key of Object.keys(reading)) {
+      const value = reading[key];
+      if (typeof value !== 'number') continue;
+      const studioChannel = firmwareKeyToStudioChannel(key);
+      if (studioChannel === null) continue;
+      channelMap[studioChannel] = {
+        firmwareKey: key,
+        value,
+        fault: value < FAULT_THRESHOLD
+      };
     }
 
     if (this.onGridUpdateCallback) {
-      this.onGridUpdateCallback(faultGrid, timestampMs);
+      this.onGridUpdateCallback(channelMap);
     }
   }
 }

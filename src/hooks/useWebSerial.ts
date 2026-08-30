@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useAppStore } from '../store/useAppStore';
 import { OptiMeshSerial } from '../utils/optimesh-serial';
-import type { FaultGrid } from '../utils/optimesh-serial';
+import type { ChannelMap } from '../utils/optimesh-serial';
 import type { SensorData, RawData, PerChannelData, ZoneStatus } from '../types';
 
 export function useWebSerial() {
@@ -9,45 +9,39 @@ export function useWebSerial() {
   const [isConnected, setIsConnected] = useState(false);
   const serialRef = useRef<OptiMeshSerial | null>(null);
 
-  const handleGridUpdate = useCallback((faultGrid: FaultGrid, timestampMs: number) => {
+  const handleGridUpdate = useCallback((channelMap: ChannelMap) => {
     const raw: RawData = {};
     const perChannel: PerChannelData = {};
     const brokenChannels: string[] = [];
     const zoneStatus: ZoneStatus = {};
+    const timestampMs = Date.now();
 
-    let index = 0;
-    // Map 10x10 faultGrid (100 bits) to CosmoTrace channels X1..X65, Y1..Y35
-    for (let x = 0; x < 10; x++) {
-      for (let y = 0; y < 10; y++) {
-        index++;
-        const channelId = index <= 65 ? `X${index}` : `Y${index - 65}`;
-        const isFaulted = faultGrid[x][y];
+    Object.entries(channelMap).forEach(([studioNumStr, entry]) => {
+      const studioNum = parseInt(studioNumStr, 10);
+      const channelId = `X${studioNum}`;
+      const status = entry.fault ? 'BROKEN' : 'OK';
 
-        const status = isFaulted ? 'BROKEN' : 'OK';
-        const reading = isFaulted ? 20 : 500; // Raw value < 100 indicates fault
+      raw[channelId] = entry.value;
+      perChannel[channelId] = status;
 
-        raw[channelId] = reading;
-        perChannel[channelId] = status;
+      if (entry.fault) {
+        brokenChannels.push(channelId);
 
-        if (isFaulted) {
-          brokenChannels.push(channelId);
-
-          const region = calibrationMap[channelId]?.region || gloveCalibrationMap[channelId]?.region;
-          if (region) {
-            zoneStatus[region] = 'BROKEN';
-          }
-
-          addEventLogEntry({
-            id: `evt-${timestampMs}-${channelId}`,
-            timestamp: timestampMs,
-            channelId,
-            reading,
-            region: region || 'torso_front',
-            status: 'BROKEN'
-          });
+        const region = calibrationMap[channelId]?.region || gloveCalibrationMap[channelId]?.region;
+        if (region) {
+          zoneStatus[region] = 'BROKEN';
         }
+
+        addEventLogEntry({
+          id: `evt-${timestampMs}-${channelId}`,
+          timestamp: timestampMs,
+          channelId,
+          reading: entry.value,
+          region: (region ? 'left_arm' : 'left_arm') as any,
+          status: 'BROKEN'
+        });
       }
-    }
+    });
 
     const sensorData: SensorData = {
       timestamp: timestampMs,

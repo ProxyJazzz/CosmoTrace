@@ -1,21 +1,45 @@
 /**
- * OptiMesh EVA — Web Serial bridge
- * Connects to ESP32 over USB, parses "F,<ts>,<hex25>" frames,
- * and calls onGridUpdate(faultGrid) where faultGrid is a 10x10
- * boolean array: faultGrid[x][y] === true means that junction is FAULTED.
+ * OptiMesh EVA — Web Serial bridge (v2)
+ * Matches the ACTUAL firmware currently running on the ESP32, which streams
+ * one flat JSON object per line, e.g.:
  *
- * Drop this into your existing frontend and wire onGridUpdate to
- * whatever function currently lights up cells based on the numbers
- * you were reading before.
+ *   {"X1":542,"X2":509,...,"X65":532,"Y1":547,"Y2":23,...,"Y55":515}
  *
- * Requires Chrome or Edge (Web Serial API). No internet required —
- * this is a direct USB connection, everything runs locally.
+ * 65 X-channels + 55 Y-channels = 120 total, matching the Glove Calibration
+ * Studio's 120 named channels (X1-X120 in the UI maps to X1-X65 + Y1-Y55
+ * here — see CHANNEL NUMBERING NOTE below).
+ *
+ * Each value is a raw ADC reading (roughly 450-550 when healthy). A value
+ * far below baseline (isolated low outlier) indicates a broken/blocked
+ * fiber junction. FAULT_THRESHOLD below is a starting point — tune it
+ * once you have more real readings from intentionally broken fibers.
+ *
+ * CHANNEL NUMBERING (CONFIRMED):
+ * Calibration Studio's channel list (X1-X120, e.g. X1=Left-Thumb,
+ * X2=Left-Index...) maps onto firmware keys as:
+ *   Studio X1  .. X65  -> firmware "X1".."X65"   (horizontal fibers)
+ *   Studio X66 .. X120 -> firmware "Y1".."Y55"   (vertical fibers)
+ * i.e. Studio channel number N maps to firmware key "X"+N for N<=65,
+ * and firmware key "Y"+(N-65) for N>65. studioChannelToFirmwareKey()
+ * and firmwareKeyToStudioChannel() below implement this both ways.
  */
 
-const GRID_X = 10;
-const GRID_Y = 10;
+export function studioChannelToFirmwareKey(studioChannelNum) {
+  if (studioChannelNum <= 65) return `X${studioChannelNum}`;
+  return `Y${studioChannelNum - 65}`;
+}
 
-class OptiMeshSerial {
+export function firmwareKeyToStudioChannel(firmwareKey) {
+  const match = firmwareKey.match(/^([XY])(\d+)$/);
+  if (!match) return null;
+  const [, axis, numStr] = match;
+  const num = parseInt(numStr, 10);
+  return axis === "X" ? num : num + 65;
+}
+
+export const FAULT_THRESHOLD = 200; // ADC below this = fault. Healthy baseline ~450-550.
+
+export class OptiMeshSerial {
   constructor(onGridUpdate, onStatus) {
     this.port = null;
     this.reader = null;
@@ -36,7 +60,7 @@ class OptiMeshSerial {
     this.onStatus("connected", "ESP32 connected");
 
     this.keepReading = true;
-    this._readLoop(); // fire and forget
+    this._readLoop();
   }
 
   async disconnect() {
@@ -80,59 +104,33 @@ class OptiMeshSerial {
   }
 
   _handleLine(line) {
-    // Only care about frame lines: F,<ts>,<hex25>
-    if (line[0] !== "F") return;
+    // Expecting a flat JSON object like {"X1":542,"X2":509,...,"Y55":515}
+    if (line[0] !== "{") return; // not a data line, ignore silently
 
-    const parts = line.split(",");
-    if (parts.length !== 3) return;
-
-    const hex = parts[2].trim();
-    if (hex.length !== 25) return; // malformed frame, drop it silently
-
-    const faultGrid = this._hexToGrid(hex);
-    this.onGridUpdate(faultGrid);
-  }
-
-  _hexToGrid(hex) {
-    // 25 hex chars = 100 bits, row-major: bit i -> x = floor(i/10), y = i%10
-    const grid = Array.from({ length: GRID_X }, () => new Array(GRID_Y).fill(false));
-
-    let bits = "";
-    for (const ch of hex) {
-      bits += parseInt(ch, 16).toString(2).padStart(4, "0");
+    let reading;
+    try {
+      reading = JSON.parse(line);
+    } catch (e) {
+      // Malformed/partial line - drop it, next line will likely be clean.
+      return;
     }
-    // bits now length 100
 
-    for (let i = 0; i < GRID_X * GRID_Y; i++) {
-      const x = Math.floor(i / GRID_Y);
-      const y = i % GRID_Y;
-      grid[x][y] = bits[i] === "1";
+    // Keyed by Studio channel number (1-120) so the caller can look up
+    // zone names directly from the Calibration Studio export without
+    // doing any X/Y translation itself.
+    const channelMap = {}; // e.g. { 1: {firmwareKey: "X1", value: 542, fault: false}, ... }
+    for (const key of Object.keys(reading)) {
+      const value = reading[key];
+      if (typeof value !== "number") continue;
+      const studioChannel = firmwareKeyToStudioChannel(key);
+      if (studioChannel === null) continue; // unrecognized key, skip
+      channelMap[studioChannel] = {
+        firmwareKey: key,
+        value,
+        fault: value < FAULT_THRESHOLD,
+      };
     }
-    return grid;
+
+    this.onGridUpdate(channelMap);
   }
 }
-
-// ---------------------------------------------------------------
-// USAGE EXAMPLE — wire this into your existing grid-lighting code
-// ---------------------------------------------------------------
-//
-// const bridge = new OptiMeshSerial(
-//   (faultGrid) => {
-//     for (let x = 0; x < 10; x++) {
-//       for (let y = 0; y < 10; y++) {
-//         const cellEl = document.getElementById(`cell-${x}-${y}`);
-//         if (!cellEl) continue;
-//         cellEl.classList.toggle("damaged", faultGrid[x][y]);
-//       }
-//     }
-//   },
-//   (status, msg) => {
-//     document.getElementById("status").textContent = msg;
-//   }
-// );
-//
-// document.getElementById("connectBtn").addEventListener("click", () => {
-//   bridge.connect(115200).catch(console.error);
-// });
-
-export { OptiMeshSerial };
