@@ -1,20 +1,19 @@
 /*
-  OptiMesh EVA — Fiber Grid Scanner (120-channel)
-  ESP32 + 2x CD74HC4067 16-channel muxes
-  12 X-fibers (emitters, horizontal) x 10 Y-fibers (receivers, vertical)
+  OptiMesh EVA — Fiber Grid Scanner
+  ESP32 + CD74HC4067 Mux Matrix
+  24 X-fibers (horizontal emitters: knuckles downward X1..X24)
+  20 Y-fibers (vertical receivers: Y1..Y10 Front Palmar, Y11..Y20 Back Dorsal)
 
   WIRING (adjust pins to your actual build):
   --------------------------------------------
-  MUX 1 (X side - LED emitters, driven one at a time):
+  MUX 1/2 (X side - LED emitters, driven one at a time):
     S0 -> GPIO 16
     S1 -> GPIO 17
     S2 -> GPIO 18
     S3 -> GPIO 19
-    SIG/COM -> connects to a transistor/driver feeding the selected LED
-               (or directly to a GPIO output pin acting as the LED source
-               if current is low enough — use a resistor either way)
+    SIG/COM -> connects to transistor/driver feeding the selected LED emitter
 
-  MUX 2 (Y side - phototransistor receivers, read one at a time):
+  MUX 3/4 (Y side - phototransistor receivers, read one at a time):
     S0 -> GPIO 21
     S1 -> GPIO 22
     S2 -> GPIO 23
@@ -28,23 +27,11 @@
   PROTOCOL (over USB serial, 115200 baud):
   --------------------------------------------
   Each full scan cycle emits ONE line:
-
     F,<timestamp_ms>,<bitmask_hex>\n
 
-  bitmask_hex = 120-bit grid (12x10) packed as 30 hex chars (120 bits),
-  MSB-first, row-major (X0Y0, X0Y1, ... X0Y9, X1Y0, ...).
+  bitmask_hex = 480-bit grid (24x20) packed as hex chars,
+  MSB-first, row-major (X1Y1, X1Y2, ... X1Y20, X2Y1, ...).
   A '1' bit = FAULT (broken/blocked fiber junction), '0' = OK.
-
-  Example:
-    F,184320,000000000000000000000000000004\n
-    (only the last junction is faulted)
-
-  This keeps the line short, fixed-format, and trivial to parse in JS
-  with no JSON overhead — good for a tight polling loop over Web Serial.
-
-  A human-readable companion line is also sent for debugging:
-    D,X<i>,Y<j>,<adc_value>,<FAULT|OK>\n
-  You can filter these out in the frontend if you only want the F, line.
 */
 
 #include <Arduino.h>
@@ -63,8 +50,8 @@ const int Y_S2 = 23;
 const int Y_S3 = 25;
 const int Y_SIG = 34;     // ADC input from selected phototransistor
 
-const int GRID_X = 12;
-const int GRID_Y = 10;
+const int GRID_X = 24;
+const int GRID_Y = 20;
 
 // ---- Calibration ----
 // ADC below this = fiber broken / light blocked. Tune after running

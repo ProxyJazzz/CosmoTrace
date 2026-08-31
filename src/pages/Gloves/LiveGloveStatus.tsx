@@ -12,7 +12,8 @@ import {
   AlertTriangle, 
   RotateCcw,
   Zap,
-  Info
+  Info,
+  Crosshair
 } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
 import { OptiMeshSerial } from '../../utils/optimesh-serial';
@@ -30,8 +31,9 @@ interface ZoneDef {
 
 const GLOVE_ZONES: Record<GloveHand, ZoneDef[]> = {
   left: [
-    { id: 'left_palm', label: 'Left Palm', finger: 'palm', view: 'front' },
-    { id: 'left_palm', label: 'Left Dorsal Palm', finger: 'palm', view: 'back' },
+    { id: 'left_palm', label: 'Left Hand & Palm Grid', finger: 'palm', view: 'front' },
+    { id: 'left_palm', label: 'Left Dorsal Hand Grid', finger: 'palm', view: 'back' },
+    { id: 'left_forearm', label: 'Left Forearm Sleeve', finger: 'forearm', view: 'both' },
     { id: 'left_thumb', label: 'Left Thumb', finger: 'thumb', view: 'both' },
     { id: 'left_index_finger', label: 'Left Index', finger: 'index', view: 'both' },
     { id: 'left_middle_finger', label: 'Left Middle', finger: 'middle', view: 'both' },
@@ -39,8 +41,9 @@ const GLOVE_ZONES: Record<GloveHand, ZoneDef[]> = {
     { id: 'left_little_finger', label: 'Left Little', finger: 'little', view: 'both' },
   ],
   right: [
-    { id: 'right_palm', label: 'Right Palm', finger: 'palm', view: 'front' },
-    { id: 'right_palm', label: 'Right Dorsal Palm', finger: 'palm', view: 'back' },
+    { id: 'right_palm', label: 'Right Hand & Palm Grid', finger: 'palm', view: 'front' },
+    { id: 'right_palm', label: 'Right Dorsal Hand Grid', finger: 'palm', view: 'back' },
+    { id: 'right_forearm', label: 'Right Forearm Sleeve', finger: 'forearm', view: 'both' },
     { id: 'right_thumb', label: 'Right Thumb', finger: 'thumb', view: 'both' },
     { id: 'right_index_finger', label: 'Right Index', finger: 'index', view: 'both' },
     { id: 'right_middle_finger', label: 'Right Middle', finger: 'middle', view: 'both' },
@@ -48,6 +51,14 @@ const GLOVE_ZONES: Record<GloveHand, ZoneDef[]> = {
     { id: 'right_little_finger', label: 'Right Little', finger: 'little', view: 'both' },
   ]
 };
+
+export interface SelectedIntersection {
+  xNum: number; // 1..24 (Knuckles to Elbow)
+  yNum: number; // 1..20 (1..10 = Front, 11..20 = Back)
+  xId: string;  // e.g. "X2"
+  yId: string;  // e.g. "Y20"
+  aspect: 'front' | 'back';
+}
 
 export const LiveGloveStatus: React.FC = () => {
   const { 
@@ -62,12 +73,77 @@ export const LiveGloveStatus: React.FC = () => {
 
   const [activeHand, setActiveHand] = useState<GloveHand>('left');
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
+  const [selectedIntersection, setSelectedIntersection] = useState<SelectedIntersection | null>(null);
   const [selectedZone, setSelectedZone] = useState<GloveRegion | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isConnecting, setIsConnecting] = useState(false);
   const [simulatedFaults, setSimulatedFaults] = useState<Record<string, boolean>>({});
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [channelFilter, setChannelFilter] = useState<'ALL' | 'ZONE_1' | 'ZONE_2' | 'FAULTS'>('ALL');
+  const [channelFilter, setChannelFilter] = useState<'ALL' | 'X_WIRES' | 'Y_FRONT' | 'Y_BACK' | 'FAULTS'>('ALL');
+
+  // Parser: Checks if search query is an intersection like "x2,y20", "X2, Y20", "X2 Y20", "x2-y20", "(x2, y20)"
+  const parsedSearchIntersection = useMemo<SelectedIntersection | null>(() => {
+    if (!searchQuery) return null;
+    const q = searchQuery.trim().toUpperCase();
+
+    // Pattern 1: X<num> [,/ -] Y<num>
+    const matchXY = q.match(/X\s*(\d{1,2})\s*[,/\s\-]+\s*Y\s*(\d{1,2})/);
+    if (matchXY) {
+      const xNum = parseInt(matchXY[1], 10);
+      const yNum = parseInt(matchXY[2], 10);
+      if (xNum >= 1 && xNum <= 24 && yNum >= 1 && yNum <= 20) {
+        return {
+          xNum,
+          yNum,
+          xId: `X${xNum}`,
+          yId: `Y${yNum}`,
+          aspect: yNum <= 10 ? 'front' : 'back'
+        };
+      }
+    }
+
+    // Pattern 2: Y<num> [,/ -] X<num>
+    const matchYX = q.match(/Y\s*(\d{1,2})\s*[,/\s\-]+\s*X\s*(\d{1,2})/);
+    if (matchYX) {
+      const yNum = parseInt(matchYX[1], 10);
+      const xNum = parseInt(matchYX[2], 10);
+      if (xNum >= 1 && xNum <= 24 && yNum >= 1 && yNum <= 20) {
+        return {
+          xNum,
+          yNum,
+          xId: `X${xNum}`,
+          yId: `Y${yNum}`,
+          aspect: yNum <= 10 ? 'front' : 'back'
+        };
+      }
+    }
+
+    // Pattern 3: (2, 20) or 2, 20
+    const matchNumPair = q.match(/^\(?\s*(\d{1,2})\s*[,/\s\-]+\s*(\d{1,2})\s*\)?$/);
+    if (matchNumPair) {
+      const xNum = parseInt(matchNumPair[1], 10);
+      const yNum = parseInt(matchNumPair[2], 10);
+      if (xNum >= 1 && xNum <= 24 && yNum >= 1 && yNum <= 20) {
+        return {
+          xNum,
+          yNum,
+          xId: `X${xNum}`,
+          yId: `Y${yNum}`,
+          aspect: yNum <= 10 ? 'front' : 'back'
+        };
+      }
+    }
+
+    return null;
+  }, [searchQuery]);
+
+  // Synchronize search intersection with selectedIntersection
+  React.useEffect(() => {
+    if (parsedSearchIntersection) {
+      setSelectedIntersection(parsedSearchIntersection);
+      setSelectedChannelId(null);
+    }
+  }, [parsedSearchIntersection]);
 
   // Instantiated OptiMeshSerial bridge with onGridUpdate (v2 channelMap: 1-120) and onStatus handlers
   const bridge = React.useMemo(() => {
@@ -98,7 +174,7 @@ export const LiveGloveStatus: React.FC = () => {
             timestamp: timestampMs,
             channelId,
             reading: entry.value,
-            region: (region ? 'left_glove' : 'left_glove') as any,
+            region: (region ? region : 'left_glove') as any,
             status: 'BROKEN'
           });
         }
@@ -154,7 +230,7 @@ export const LiveGloveStatus: React.FC = () => {
     }
   };
 
-  // 2. Handle Import of freshly exported Calibration JSON
+  // Handle Import of freshly exported Calibration JSON
   const handleImportCalibration = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -180,7 +256,7 @@ export const LiveGloveStatus: React.FC = () => {
     e.target.value = '';
   };
 
-  // 3. Mapping channels and fault states
+  // Mapping channels and fault states
   const channels = useMemo(() => {
     return Object.values(gloveCalibrationMap).sort((a, b) => {
       const aNum = parseInt(a.id.replace(/\D/g, '')) || 0;
@@ -189,12 +265,31 @@ export const LiveGloveStatus: React.FC = () => {
     });
   }, [gloveCalibrationMap]);
 
-  // Check if a specific channel is faulted (from live sensorData or local simulator)
+  // Check if a specific channel is faulted
   const isChannelFaulted = (channelId: string): boolean => {
     if (simulatedFaults[channelId]) return true;
     if (sensorData?.perChannel && sensorData.perChannel[channelId] === 'BROKEN') return true;
     if (sensorData?.brokenChannels?.includes(channelId)) return true;
     return false;
+  };
+
+  // Check if a specific intersection is faulted
+  const isIntersectionFaulted = (xNum: number, yNum: number): boolean => {
+    const prefix = activeHand === 'left' ? 'L' : 'R';
+    const junctionKey = `INT-${prefix}-X${xNum}-Y${yNum}`;
+    if (simulatedFaults[junctionKey]) return true;
+    if (isChannelFaulted(`${prefix}-X${xNum}`) || isChannelFaulted(`${prefix}-Y${yNum}`)) return true;
+    return false;
+  };
+
+  // Toggle intersection fault simulation
+  const toggleIntersectionFault = (xNum: number, yNum: number) => {
+    const prefix = activeHand === 'left' ? 'L' : 'R';
+    const junctionKey = `INT-${prefix}-X${xNum}-Y${yNum}`;
+    setSimulatedFaults(prev => ({
+      ...prev,
+      [junctionKey]: !prev[junctionKey]
+    }));
   };
 
   // Check if a specific glove region has any broken channel
@@ -236,6 +331,13 @@ export const LiveGloveStatus: React.FC = () => {
         next[c.id] = true;
       }
     });
+    // Add random intersection faults
+    for (let i = 1; i <= 6; i++) {
+      const rx = Math.floor(Math.random() * 24) + 1;
+      const ry = Math.floor(Math.random() * 20) + 1;
+      const prefix = activeHand === 'left' ? 'L' : 'R';
+      next[`INT-${prefix}-X${rx}-Y${ry}`] = true;
+    }
     setSimulatedFaults(next);
   };
 
@@ -244,10 +346,17 @@ export const LiveGloveStatus: React.FC = () => {
     return channels.filter(c => {
       if (c.hand !== activeHand) return false;
       if (selectedZone && c.region !== selectedZone) return false;
-      if (channelFilter === 'ZONE_1' && (c.id.startsWith('Z2') || c.finger === 'forearm')) return false;
-      if (channelFilter === 'ZONE_2' && (!c.id.startsWith('Z2') && c.finger !== 'forearm')) return false;
+      if (channelFilter === 'X_WIRES' && !c.id.includes('-X')) return false;
+      if (channelFilter === 'Y_FRONT') {
+        const yNum = parseInt(c.id.replace(/^[^-]+-Y(\d+)$/, '$1'), 10);
+        if (isNaN(yNum) || yNum > 10) return false;
+      }
+      if (channelFilter === 'Y_BACK') {
+        const yNum = parseInt(c.id.replace(/^[^-]+-Y(\d+)$/, '$1'), 10);
+        if (isNaN(yNum) || yNum < 11 || yNum > 20) return false;
+      }
       if (channelFilter === 'FAULTS' && !isChannelFaulted(c.id)) return false;
-      if (searchQuery) {
+      if (searchQuery && !parsedSearchIntersection) {
         const query = searchQuery.toLowerCase();
         return c.id.toLowerCase().includes(query) || 
                c.label.toLowerCase().includes(query) || 
@@ -256,7 +365,7 @@ export const LiveGloveStatus: React.FC = () => {
       }
       return true;
     });
-  }, [channels, activeHand, selectedZone, channelFilter, searchQuery, simulatedFaults, sensorData]);
+  }, [channels, activeHand, selectedZone, channelFilter, searchQuery, parsedSearchIntersection, simulatedFaults, sensorData]);
 
   const selectedSensor = selectedChannelId ? gloveCalibrationMap[selectedChannelId] : null;
 
@@ -272,7 +381,7 @@ export const LiveGloveStatus: React.FC = () => {
           <div className={styles.title}>
             <Activity size={20} />
             Live 2D Glove Status Monitor
-            <span className={styles.badge}>Zone 1: Hand (3-Dots + 20 Knuckle Wires) &bull; Zone 2: Forearm (24&times;20 Mesh)</span>
+            <span className={styles.badge}>24 Horizontal &bull; 20 Vertical (10 Front / 10 Back) from Knuckles to Elbow</span>
           </div>
         </div>
 
@@ -333,21 +442,21 @@ export const LiveGloveStatus: React.FC = () => {
       {/* KPI Stats Bar */}
       <div className={styles.kpiBar}>
         <div className={styles.kpiCard}>
-          <span className={styles.kpiLabel}>Monitored Hand</span>
+          <span className={styles.kpiLabel}>Monitored Glove</span>
           <span className={styles.kpiValue} style={{ textTransform: 'capitalize' }}>
-            {activeHand} Glove & Gauntlet
+            {activeHand} Glove & Arm
           </span>
         </div>
         <div className={styles.kpiCard}>
-          <span className={styles.kpiLabel}>Monitored Wires/Sensors</span>
-          <span className={styles.kpiValue}>{stats.total} Active</span>
+          <span className={styles.kpiLabel}>Mesh Matrix</span>
+          <span className={styles.kpiValue}>24 X &times; 20 Y (480 Junc)</span>
         </div>
         <div className={styles.kpiCard}>
-          <span className={styles.kpiLabel}>Healthy Junctions</span>
-          <span className={`${styles.kpiValue} ${styles.healthy}`}>{stats.healthy}</span>
+          <span className={styles.kpiLabel}>Span</span>
+          <span className={styles.kpiValue}>Knuckles to Elbow</span>
         </div>
         <div className={styles.kpiCard}>
-          <span className={styles.kpiLabel}>Faulted Junctions</span>
+          <span className={styles.kpiLabel}>Faulted Channels</span>
           <span className={`${styles.kpiValue} ${stats.faulted > 0 ? styles.fault : styles.healthy}`}>
             {stats.faulted}
           </span>
@@ -368,10 +477,10 @@ export const LiveGloveStatus: React.FC = () => {
 
       {/* Main Workspace */}
       <div className={styles.mainContent}>
-        {/* Left Sidebar: Channels & Test Injections */}
+        {/* Left Sidebar: Channels, Search & Test Injections */}
         <aside className={styles.leftSidebar}>
           <div className={styles.sectionHeader}>
-            <span>Wire Channels ({filteredChannels.length})</span>
+            <span>Wire Channels & Intersections</span>
             <div style={{ display: 'flex', gap: '4px' }}>
               <button 
                 className={styles.tabBtn} 
@@ -394,35 +503,106 @@ export const LiveGloveStatus: React.FC = () => {
           </div>
 
           <div style={{ padding: '0.75rem 0.75rem 0', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            {/* Interactive Search Bar (Wires OR Intersections e.g. X2, Y20 or X2,Y20) */}
             <div style={{ position: 'relative' }}>
               <Search size={14} style={{ position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
               <input 
                 type="text"
-                placeholder="Search wire (e.g. Y1, X1, Z2-X10)..."
+                placeholder="Search intersection (e.g. X2, Y20 or X12, Y5)..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 style={{
                   width: '100%',
-                  background: 'rgba(0,0,0,0.2)',
-                  border: '1px solid var(--border-color)',
+                  background: parsedSearchIntersection ? 'rgba(0, 240, 255, 0.12)' : 'rgba(0,0,0,0.2)',
+                  border: `1px solid ${parsedSearchIntersection ? '#00f0ff' : 'var(--border-color)'}`,
                   color: 'white',
                   padding: '6px 8px 6px 28px',
                   borderRadius: '4px',
-                  fontSize: '0.8rem'
+                  fontSize: '0.8rem',
+                  outline: 'none'
                 }}
               />
+              {searchQuery && (
+                <button
+                  onClick={() => {
+                    setSearchQuery('');
+                    setSelectedIntersection(null);
+                  }}
+                  style={{
+                    position: 'absolute',
+                    right: '6px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--text-muted)',
+                    cursor: 'pointer',
+                    fontSize: '0.75rem'
+                  }}
+                >
+                  ✕
+                </button>
+              )}
             </div>
 
-            {/* Zone Filter Tabs */}
+            {/* Quick Intersection Search Feedback Tag */}
+            {parsedSearchIntersection && (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                background: 'rgba(0, 240, 255, 0.15)',
+                border: '1px solid #00f0ff',
+                padding: '5px 8px',
+                borderRadius: '4px',
+                fontSize: '0.75rem',
+                color: '#00f0ff'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Crosshair size={14} />
+                  <span>Targeting <strong>({parsedSearchIntersection.xId}, {parsedSearchIntersection.yId})</strong> on {parsedSearchIntersection.aspect.toUpperCase()} VIEW</span>
+                </div>
+              </div>
+            )}
+
+            {/* Quick Intersection Jump Buttons */}
+            <div style={{ display: 'flex', gap: '4px', overflowX: 'auto', paddingBottom: '2px' }}>
+              <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', alignSelf: 'center', whiteSpace: 'nowrap' }}>Try:</span>
+              {[
+                { label: 'X2, Y20', q: 'X2, Y20' },
+                { label: 'X8, Y5', q: 'X8, Y5' },
+                { label: 'X15, Y14', q: 'X15, Y14' },
+                { label: 'X24, Y10', q: 'X24, Y10' }
+              ].map(item => (
+                <button
+                  key={item.label}
+                  onClick={() => setSearchQuery(item.q)}
+                  style={{
+                    background: 'rgba(255,255,255,0.06)',
+                    border: '1px solid var(--border-color)',
+                    color: 'var(--text-muted)',
+                    fontSize: '0.65rem',
+                    padding: '2px 5px',
+                    borderRadius: '3px',
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Wire Filter Tabs */}
             <div style={{ display: 'flex', gap: '4px' }}>
-              {(['ALL', 'ZONE_1', 'ZONE_2', 'FAULTS'] as const).map(f => (
+              {(['ALL', 'X_WIRES', 'Y_FRONT', 'Y_BACK', 'FAULTS'] as const).map(f => (
                 <button
                   key={f}
                   onClick={() => setChannelFilter(f)}
                   style={{
                     flex: 1,
-                    padding: '4px 0',
-                    fontSize: '0.65rem',
+                    padding: '3px 0',
+                    fontSize: '0.62rem',
                     borderRadius: '4px',
                     border: '1px solid var(--border-color)',
                     background: channelFilter === f ? 'rgba(0, 240, 255, 0.2)' : 'rgba(0,0,0,0.2)',
@@ -431,7 +611,7 @@ export const LiveGloveStatus: React.FC = () => {
                     fontWeight: channelFilter === f ? 600 : 400
                   }}
                 >
-                  {f === 'ALL' ? 'ALL' : f === 'ZONE_1' ? 'Zone 1 (Hand)' : f === 'ZONE_2' ? 'Zone 2 (Arm)' : 'FAULTS'}
+                  {f === 'ALL' ? 'ALL' : f === 'X_WIRES' ? 'X (1-24)' : f === 'Y_FRONT' ? 'Y-Front' : f === 'Y_BACK' ? 'Y-Back' : 'FAULTS'}
                 </button>
               ))}
             </div>
@@ -453,7 +633,7 @@ export const LiveGloveStatus: React.FC = () => {
             {filteredChannels.map(c => {
               const faulted = isChannelFaulted(c.id);
               const isSelected = selectedChannelId === c.id;
-              const isZone2 = c.id.startsWith('Z2') || c.finger === 'forearm';
+              const isX = c.id.includes('-X');
 
               return (
                 <div 
@@ -461,6 +641,7 @@ export const LiveGloveStatus: React.FC = () => {
                   className={`${styles.channelItem} ${faulted ? styles.faulted : ''} ${isSelected ? styles.selected : ''}`}
                   onClick={() => {
                     setSelectedChannelId(c.id);
+                    setSelectedIntersection(null);
                     setSelectedZone(c.region);
                   }}
                 >
@@ -472,15 +653,15 @@ export const LiveGloveStatus: React.FC = () => {
                     )}
                     <div>
                       <div style={{ fontWeight: 600, fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span>{c.id}</span>
+                        <span>{c.id.replace(/^[^-]+-/, '')}</span>
                         <span style={{ 
                           fontSize: '0.62rem', 
                           padding: '1px 5px', 
                           borderRadius: '3px', 
-                          background: isZone2 ? 'rgba(255, 170, 0, 0.15)' : 'rgba(0, 240, 255, 0.15)',
-                          color: isZone2 ? '#ffaa00' : '#00f0ff'
+                          background: isX ? 'rgba(0, 240, 255, 0.15)' : 'rgba(255, 170, 0, 0.15)',
+                          color: isX ? '#00f0ff' : '#ffaa00'
                         }}>
-                          {isZone2 ? 'Zone 2 (Arm)' : 'Zone 1 (Hand)'}
+                          {isX ? 'Horizontal Wire' : 'Vertical Wire'}
                         </span>
                       </div>
                       <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'capitalize' }}>
@@ -512,7 +693,7 @@ export const LiveGloveStatus: React.FC = () => {
           </div>
         </aside>
 
-        {/* Center Viewer: FRONT & BACK 2D SVG Hand + Forearm Diagrams */}
+        {/* Center Viewer: FRONT (Palmar Y1..Y10) & BACK (Dorsal Y11..Y20) 2D Diagrams */}
         <main className={styles.centerViewer}>
           <div className={styles.diagramControls}>
             <div className={styles.viewTabs}>
@@ -520,32 +701,35 @@ export const LiveGloveStatus: React.FC = () => {
                 className={`${styles.tabBtn} ${activeHand === 'left' ? styles.active : ''}`}
                 onClick={() => setActiveHand('left')}
               >
-                Left Glove & Forearm
+                Left Glove & Arm
               </button>
               <button 
                 className={`${styles.tabBtn} ${activeHand === 'right' ? styles.active : ''}`}
                 onClick={() => setActiveHand('right')}
               >
-                Right Glove & Forearm
+                Right Glove & Arm
               </button>
             </div>
 
             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
               <Info size={14} />
-              Zone 1: Fingers (Y1..Y5 vertical) + Knuckles (20 Horiz X) &bull; Zone 2: Forearm (24 Horiz X &times; 20 Vert Y)
+              24 Horiz Wires (X1..X24) &bull; Front Vert Wires (Y1..Y10) &bull; Back Vert Wires (Y11..Y20) [Knuckles to Elbow]
             </div>
           </div>
 
           <div className={styles.diagramGrid}>
-            {/* FRONT VIEW (Palmar Aspect) */}
-            <div className={styles.diagramCard}>
+            {/* FRONT VIEW (Palmar Aspect: Y1 to Y10) */}
+            <div className={styles.diagramCard} style={{
+              border: selectedIntersection?.aspect === 'front' ? '1px solid #00f0ff' : undefined,
+              boxShadow: selectedIntersection?.aspect === 'front' ? '0 0 15px rgba(0, 240, 255, 0.25)' : undefined
+            }}>
               <div className={styles.diagramHeader}>
                 <div className={styles.diagramTitle}>
                   <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--status-healthy)', display: 'inline-block' }}></span>
-                  FRONT VIEW (Palmar / Anterior Aspect)
+                  FRONT VIEW (Palmar Aspect: Knuckles to Elbow)
                 </div>
-                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'capitalize' }}>
-                  {activeHand} Glove + Gauntlet (Zone 1 & 2)
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                  Vertical Wires: <strong>Y1 &ndash; Y10</strong> &bull; 24 Horizontal (X1..X24)
                 </span>
               </div>
 
@@ -556,23 +740,36 @@ export const LiveGloveStatus: React.FC = () => {
                   channels={channels.filter(c => c.hand === activeHand)}
                   isChannelFaulted={isChannelFaulted}
                   isZoneFaulted={isZoneFaulted}
+                  isIntersectionFaulted={isIntersectionFaulted}
                   selectedChannelId={selectedChannelId}
+                  selectedIntersection={selectedIntersection}
                   selectedZone={selectedZone}
-                  onSelectChannel={setSelectedChannelId}
+                  onSelectChannel={(id) => {
+                    setSelectedChannelId(id);
+                    setSelectedIntersection(null);
+                  }}
+                  onSelectIntersection={(intSec) => {
+                    setSelectedIntersection(intSec);
+                    setSelectedChannelId(null);
+                    setSearchQuery(`${intSec.xId}, ${intSec.yId}`);
+                  }}
                   onSelectZone={setSelectedZone}
                 />
               </div>
             </div>
 
-            {/* BACK VIEW (Dorsal Aspect) */}
-            <div className={styles.diagramCard}>
+            {/* BACK VIEW (Dorsal Aspect: Y11 to Y20) */}
+            <div className={styles.diagramCard} style={{
+              border: selectedIntersection?.aspect === 'back' ? '1px solid #00f0ff' : undefined,
+              boxShadow: selectedIntersection?.aspect === 'back' ? '0 0 15px rgba(0, 240, 255, 0.25)' : undefined
+            }}>
               <div className={styles.diagramHeader}>
                 <div className={styles.diagramTitle}>
                   <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--status-healthy)', display: 'inline-block' }}></span>
-                  BACK VIEW (Dorsal / Posterior Aspect)
+                  BACK VIEW (Dorsal Aspect: Knuckles to Elbow)
                 </div>
-                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'capitalize' }}>
-                  {activeHand} Glove + Gauntlet (Zone 1 & 2)
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                  Vertical Wires: <strong>Y11 &ndash; Y20</strong> &bull; 24 Horizontal (X1..X24)
                 </span>
               </div>
 
@@ -583,9 +780,19 @@ export const LiveGloveStatus: React.FC = () => {
                   channels={channels.filter(c => c.hand === activeHand)}
                   isChannelFaulted={isChannelFaulted}
                   isZoneFaulted={isZoneFaulted}
+                  isIntersectionFaulted={isIntersectionFaulted}
                   selectedChannelId={selectedChannelId}
+                  selectedIntersection={selectedIntersection}
                   selectedZone={selectedZone}
-                  onSelectChannel={setSelectedChannelId}
+                  onSelectChannel={(id) => {
+                    setSelectedChannelId(id);
+                    setSelectedIntersection(null);
+                  }}
+                  onSelectIntersection={(intSec) => {
+                    setSelectedIntersection(intSec);
+                    setSelectedChannelId(null);
+                    setSearchQuery(`${intSec.xId}, ${intSec.yId}`);
+                  }}
                   onSelectZone={setSelectedZone}
                 />
               </div>
@@ -593,19 +800,78 @@ export const LiveGloveStatus: React.FC = () => {
           </div>
         </main>
 
-        {/* Right Sidebar: Telemetry & Zone Breakdown */}
+        {/* Right Sidebar: Telemetry Inspector */}
         <aside className={styles.rightSidebar}>
           <div className={styles.sectionHeader}>
             <span>Telemetry Inspector</span>
           </div>
 
           <div style={{ padding: '1rem', display: 'flex', flex: 1, flexDirection: 'column', gap: '1rem', overflowY: 'auto' }}>
-            {selectedSensor ? (
+            {selectedIntersection ? (
+              /* Display Selected Intersection Details (e.g. X2, Y20) */
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <div style={{ background: 'rgba(0, 240, 255, 0.08)', padding: '0.75rem', borderRadius: '6px', border: '1px solid #00f0ff' }}>
+                  <div style={{ fontSize: '0.7rem', color: '#00f0ff', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    🎯 Selected Mesh Intersection
+                  </div>
+                  <div style={{ fontSize: '1.4rem', fontWeight: 800, color: isIntersectionFaulted(selectedIntersection.xNum, selectedIntersection.yNum) ? 'var(--status-fault)' : '#00f0ff', marginTop: '2px' }}>
+                    ({selectedIntersection.xId}, {selectedIntersection.yId})
+                  </div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-main)', marginTop: '4px' }}>
+                    Intersection of Row <strong>{selectedIntersection.xId}</strong> & Column <strong>{selectedIntersection.yId}</strong>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                  <div style={{ background: 'rgba(0,0,0,0.2)', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)' }}>
+                    <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Aspect Location</div>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#00f0ff' }}>
+                      {selectedIntersection.aspect === 'front' ? 'Front (Palmar Y1-Y10)' : 'Back (Dorsal Y11-Y20)'}
+                    </div>
+                  </div>
+                  <div style={{ background: 'rgba(0,0,0,0.2)', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)' }}>
+                    <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Status</div>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 600, color: isIntersectionFaulted(selectedIntersection.xNum, selectedIntersection.yNum) ? 'var(--status-fault)' : 'var(--status-healthy)' }}>
+                      {isIntersectionFaulted(selectedIntersection.xNum, selectedIntersection.yNum) ? 'FAULT DETECTED' : 'NOMINAL (0)'}
+                    </div>
+                  </div>
+                  <div style={{ background: 'rgba(0,0,0,0.2)', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)' }}>
+                    <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Horizontal Wire</div>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-main)' }}>
+                      Row {selectedIntersection.xNum} of 24
+                    </div>
+                  </div>
+                  <div style={{ background: 'rgba(0,0,0,0.2)', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)' }}>
+                    <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Vertical Wire</div>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-main)' }}>
+                      Col {selectedIntersection.aspect === 'front' ? selectedIntersection.yNum : (selectedIntersection.yNum - 10)} of 10
+                    </div>
+                  </div>
+                </div>
+
+                <button 
+                  onClick={() => toggleIntersectionFault(selectedIntersection.xNum, selectedIntersection.yNum)}
+                  style={{
+                    background: isIntersectionFaulted(selectedIntersection.xNum, selectedIntersection.yNum) ? 'rgba(255,42,42,0.2)' : 'rgba(0,240,255,0.15)',
+                    border: `1px solid ${isIntersectionFaulted(selectedIntersection.xNum, selectedIntersection.yNum) ? 'var(--status-fault)' : 'var(--border-color)'}`,
+                    color: isIntersectionFaulted(selectedIntersection.xNum, selectedIntersection.yNum) ? 'var(--status-fault)' : 'var(--status-healthy)',
+                    padding: '8px',
+                    borderRadius: '6px',
+                    fontSize: '0.8rem',
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                >
+                  {isIntersectionFaulted(selectedIntersection.xNum, selectedIntersection.yNum) ? 'Clear Intersection Fault' : 'Simulate Fault on Intersection'}
+                </button>
+              </div>
+            ) : selectedSensor ? (
+              /* Display Selected Individual Channel Details */
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 <div style={{ background: 'rgba(0,0,0,0.3)', padding: '0.75rem', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
-                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Selected Channel / Wire</div>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Selected Wire Channel</div>
                   <div style={{ fontSize: '1.25rem', fontWeight: 700, color: isChannelFaulted(selectedSensor.id) ? 'var(--status-fault)' : 'var(--status-healthy)', marginTop: '2px' }}>
-                    {selectedSensor.id}
+                    {selectedSensor.id.replace(/^[^-]+-/, '')}
                   </div>
                   <div style={{ fontSize: '0.8rem', color: 'var(--text-main)', marginTop: '4px' }}>
                     {selectedSensor.label}
@@ -614,25 +880,25 @@ export const LiveGloveStatus: React.FC = () => {
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
                   <div style={{ background: 'rgba(0,0,0,0.2)', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)' }}>
-                    <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Zone</div>
-                    <div style={{ fontSize: '0.9rem', fontWeight: 600, color: selectedSensor.id.startsWith('Z2') || selectedSensor.finger === 'forearm' ? '#ffaa00' : '#00f0ff' }}>
-                      {selectedSensor.id.startsWith('Z2') || selectedSensor.finger === 'forearm' ? 'Zone 2 (Wrist-to-Elbow)' : 'Zone 1 (Hand)'}
+                    <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Wire Type</div>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 600, color: selectedSensor.id.includes('-X') ? '#00f0ff' : '#ffaa00' }}>
+                      {selectedSensor.id.includes('-X') ? 'Horizontal (X)' : 'Vertical (Y)'}
                     </div>
                   </div>
                   <div style={{ background: 'rgba(0,0,0,0.2)', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)' }}>
                     <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Status</div>
-                    <div style={{ fontSize: '0.9rem', fontWeight: 600, color: isChannelFaulted(selectedSensor.id) ? 'var(--status-fault)' : 'var(--status-healthy)' }}>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 600, color: isChannelFaulted(selectedSensor.id) ? 'var(--status-fault)' : 'var(--status-healthy)' }}>
                       {isChannelFaulted(selectedSensor.id) ? 'FAULT (1)' : 'NOMINAL (0)'}
                     </div>
                   </div>
                   <div style={{ background: 'rgba(0,0,0,0.2)', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)' }}>
-                    <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Anatomical Region</div>
+                    <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Anatomical Zone</div>
                     <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-main)', textTransform: 'capitalize' }}>
                       {selectedSensor.region.replace('_', ' ')}
                     </div>
                   </div>
                   <div style={{ background: 'rgba(0,0,0,0.2)', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)' }}>
-                    <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Fibre Bus Route</div>
+                    <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Fibre Route</div>
                     <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-main)' }}>
                       {selectedSensor.fibreId}
                     </div>
@@ -640,7 +906,7 @@ export const LiveGloveStatus: React.FC = () => {
                 </div>
 
                 <div style={{ background: 'rgba(0,0,0,0.2)', padding: '0.75rem', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
-                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '4px' }}>3D Spatial Anchor</div>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '4px' }}>3D Spatial Position</div>
                   <div style={{ fontFamily: 'monospace', fontSize: '0.75rem', color: 'var(--status-healthy)' }}>
                     X: {selectedSensor.position[0].toFixed(3)} | Y: {selectedSensor.position[1].toFixed(3)} | Z: {selectedSensor.position[2].toFixed(3)}
                   </div>
@@ -648,7 +914,7 @@ export const LiveGloveStatus: React.FC = () => {
               </div>
             ) : (
               <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem', padding: '2rem 1rem' }}>
-                Click any wire or junction dot on the hand or forearm diagram to inspect optical telemetry.
+                Type an intersection query (e.g. <code>X2, Y20</code>) or click any wire or junction dot on the hand and arm diagrams.
               </div>
             )}
 
@@ -683,45 +949,57 @@ export const LiveGloveStatus: React.FC = () => {
 
 // ----------------------------------------------------------------------------------
 // 2D SVG Hand & Forearm Diagram Component:
-// Zone 1: Hand (Finger Vertical Wires Y1..Y5 + 20 Knuckle Horizontal Wires X1..X20)
-// Zone 2: Forearm Wrist to Elbow (24 Horizontal Wires Z2-X1..X24 & 20 Vertical Wires Z2-Y1..Y20)
+// - 24 Horizontal Wires (X1..X24) from Knuckles (y=140) to Elbow (y=625), equally spaced
+// - 20 Vertical Lines from Knuckles (y=140) to Elbow (y=625) (10 Front Y1..Y10 / 10 Back Y11..Y20)
+// - 5 Finger Vertical Wires (1 per finger with 3 equidistant dots)
+// - Interactive Intersection Matrix (240 Front + 240 Back) with Crosshair Highlight
 // ----------------------------------------------------------------------------------
 
-// Zone 1 Knuckle Horizontal Wires: 20 wires localized exclusively to the Knuckles (MCP Band, y=138 to 176)
-const Z1_KNUCKLE_X_WIRES = Array.from({ length: 20 }, (_, i) => {
-  const wireNum = i + 1;
-  const y = 138 + i * 1.95; // Localized within the 38px knuckle band
-  const leftX = 82;
-  const rightX = 216;
+// 24 Horizontal Wires starting at knuckles (y=140) down to elbow (y=625), equally spaced
+const HORIZ_X_WIRES = Array.from({ length: 24 }, (_, i) => {
+  const num = i + 1;
+  // Equally spaced from knuckles (140) to elbow (625)
+  const y = 140 + (i * (625 - 140) / 23);
+  
+  let leftX: number;
+  let rightX: number;
+
+  if (y <= 325) {
+    // Hand & Palm region
+    leftX = 75 - (y > 220 ? (y - 220) * 0.15 : (220 - y) * 0.1);
+    rightX = 220 - (y > 250 ? (y - 250) * 0.15 : 0);
+  } else {
+    // Forearm sleeve down to elbow
+    leftX = 90 - (y - 325) * 0.075;
+    rightX = 210 + (y - 325) * 0.075;
+  }
+
   return {
-    num: wireNum,
-    id: `Z1-X${wireNum}`,
+    num,
+    id: `X${num}`,
     y,
-    span: [leftX, rightX]
+    span: [Math.max(68, leftX), Math.min(232, rightX)]
   };
 });
 
-// Zone 2 Forearm Horizontal Wires: 24 wires from wrist (y=345) to elbow (y=625)
-const Z2_FOREARM_X_WIRES = Array.from({ length: 24 }, (_, i) => {
-  const wireNum = i + 1;
-  const y = 345 + i * 12.2;
-  const leftX = 90 - (y - 330) * 0.07;
-  const rightX = 210 + (y - 330) * 0.07;
+// Front Vertical Wires: Y1 to Y10 from Knuckles to Elbow
+const FRONT_VERT_Y_WIRES = Array.from({ length: 10 }, (_, j) => {
+  const num = j + 1;
+  const u = j / 9; // fraction from 0 to 1
   return {
-    num: wireNum,
-    id: `Z2-X${wireNum}`,
-    y,
-    span: [leftX, rightX]
+    num,
+    id: `Y${num}`,
+    u
   };
 });
 
-// Zone 2 Forearm Vertical Wires: 20 vertical wires across forearm width
-const Z2_FOREARM_Y_COLS = Array.from({ length: 20 }, (_, j) => {
-  const colNum = j + 1;
-  const u = j / 19; // 0 to 1
+// Back Vertical Wires: Y11 to Y20 from Knuckles to Elbow
+const BACK_VERT_Y_WIRES = Array.from({ length: 10 }, (_, j) => {
+  const num = 11 + j;
+  const u = j / 9; // fraction from 0 to 1
   return {
-    num: colNum,
-    id: `Z2-Y${colNum}`,
+    num,
+    id: `Y${num}`,
     u
   };
 });
@@ -739,20 +1017,18 @@ interface FingerVerticalWireDef {
   region: GloveRegion;
   label: string;
   yWireId: string;
-  yWireLabel: string;
   pathD: string;
   dots: FingerDotDef[];
 }
 
-const Z1_FINGER_WIRES: Record<GloveHand, FingerVerticalWireDef[]> = {
+const FINGER_WIRES: Record<GloveHand, FingerVerticalWireDef[]> = {
   left: [
     {
       finger: 'thumb',
       region: 'left_thumb',
-      label: 'Left Thumb',
-      yWireId: 'Y1',
-      yWireLabel: 'Y1 (Thumb)',
-      pathD: 'M 45 122 L 63 157 L 81 192 Q 100 250 105 320',
+      label: 'Thumb',
+      yWireId: 'Y-TH',
+      pathD: 'M 45 122 L 63 157 L 81 192',
       dots: [
         { segment: 'tip', label: 'Distal Tip', shortLabel: 'TIP', x: 45, y: 122 },
         { segment: 'mid', label: 'Interphalangeal (IP)', shortLabel: 'MID', x: 63, y: 157 },
@@ -762,10 +1038,9 @@ const Z1_FINGER_WIRES: Record<GloveHand, FingerVerticalWireDef[]> = {
     {
       finger: 'index',
       region: 'left_index_finger',
-      label: 'Left Index Finger',
-      yWireId: 'Y2',
-      yWireLabel: 'Y2 (Index)',
-      pathD: 'M 110 48 L 110 92 L 110 136 L 115 320',
+      label: 'Index Finger',
+      yWireId: 'Y-IF',
+      pathD: 'M 110 48 L 110 92 L 110 136',
       dots: [
         { segment: 'tip', label: 'Distal Tip', shortLabel: 'TIP', x: 110, y: 48 },
         { segment: 'mid', label: 'Proximal Interphalangeal (PIP)', shortLabel: 'MID', x: 110, y: 92 },
@@ -775,10 +1050,9 @@ const Z1_FINGER_WIRES: Record<GloveHand, FingerVerticalWireDef[]> = {
     {
       finger: 'middle',
       region: 'left_middle_finger',
-      label: 'Left Middle Finger',
-      yWireId: 'Y3',
-      yWireLabel: 'Y3 (Middle)',
-      pathD: 'M 146 32 L 146 82 L 146 132 L 146 320',
+      label: 'Middle Finger',
+      yWireId: 'Y-MF',
+      pathD: 'M 146 32 L 146 82 L 146 132',
       dots: [
         { segment: 'tip', label: 'Distal Tip', shortLabel: 'TIP', x: 146, y: 32 },
         { segment: 'mid', label: 'Proximal Interphalangeal (PIP)', shortLabel: 'MID', x: 146, y: 82 },
@@ -788,10 +1062,9 @@ const Z1_FINGER_WIRES: Record<GloveHand, FingerVerticalWireDef[]> = {
     {
       finger: 'ring',
       region: 'left_ring_finger',
-      label: 'Left Ring Finger',
-      yWireId: 'Y4',
-      yWireLabel: 'Y4 (Ring)',
-      pathD: 'M 178 48 L 178 92 L 178 136 L 175 320',
+      label: 'Ring Finger',
+      yWireId: 'Y-RF',
+      pathD: 'M 178 48 L 178 92 L 178 136',
       dots: [
         { segment: 'tip', label: 'Distal Tip', shortLabel: 'TIP', x: 178, y: 48 },
         { segment: 'mid', label: 'Proximal Interphalangeal (PIP)', shortLabel: 'MID', x: 178, y: 92 },
@@ -801,10 +1074,9 @@ const Z1_FINGER_WIRES: Record<GloveHand, FingerVerticalWireDef[]> = {
     {
       finger: 'little',
       region: 'left_little_finger',
-      label: 'Left Little Finger',
-      yWireId: 'Y5',
-      yWireLabel: 'Y5 (Little)',
-      pathD: 'M 218 78 L 212 117 L 206 156 Q 195 240 185 320',
+      label: 'Little Finger',
+      yWireId: 'Y-LF',
+      pathD: 'M 218 78 L 212 117 L 206 156',
       dots: [
         { segment: 'tip', label: 'Distal Tip', shortLabel: 'TIP', x: 218, y: 78 },
         { segment: 'mid', label: 'Proximal Interphalangeal (PIP)', shortLabel: 'MID', x: 212, y: 117 },
@@ -816,10 +1088,9 @@ const Z1_FINGER_WIRES: Record<GloveHand, FingerVerticalWireDef[]> = {
     {
       finger: 'thumb',
       region: 'right_thumb',
-      label: 'Right Thumb',
-      yWireId: 'Y1',
-      yWireLabel: 'Y1 (Thumb)',
-      pathD: 'M 45 122 L 63 157 L 81 192 Q 100 250 105 320',
+      label: 'Thumb',
+      yWireId: 'Y-TH',
+      pathD: 'M 45 122 L 63 157 L 81 192',
       dots: [
         { segment: 'tip', label: 'Distal Tip', shortLabel: 'TIP', x: 45, y: 122 },
         { segment: 'mid', label: 'Interphalangeal (IP)', shortLabel: 'MID', x: 63, y: 157 },
@@ -829,10 +1100,9 @@ const Z1_FINGER_WIRES: Record<GloveHand, FingerVerticalWireDef[]> = {
     {
       finger: 'index',
       region: 'right_index_finger',
-      label: 'Right Index Finger',
-      yWireId: 'Y2',
-      yWireLabel: 'Y2 (Index)',
-      pathD: 'M 110 48 L 110 92 L 110 136 L 115 320',
+      label: 'Index Finger',
+      yWireId: 'Y-IF',
+      pathD: 'M 110 48 L 110 92 L 110 136',
       dots: [
         { segment: 'tip', label: 'Distal Tip', shortLabel: 'TIP', x: 110, y: 48 },
         { segment: 'mid', label: 'Proximal Interphalangeal (PIP)', shortLabel: 'MID', x: 110, y: 92 },
@@ -842,10 +1112,9 @@ const Z1_FINGER_WIRES: Record<GloveHand, FingerVerticalWireDef[]> = {
     {
       finger: 'middle',
       region: 'right_middle_finger',
-      label: 'Right Middle Finger',
-      yWireId: 'Y3',
-      yWireLabel: 'Y3 (Middle)',
-      pathD: 'M 146 32 L 146 82 L 146 132 L 146 320',
+      label: 'Middle Finger',
+      yWireId: 'Y-MF',
+      pathD: 'M 146 32 L 146 82 L 146 132',
       dots: [
         { segment: 'tip', label: 'Distal Tip', shortLabel: 'TIP', x: 146, y: 32 },
         { segment: 'mid', label: 'Proximal Interphalangeal (PIP)', shortLabel: 'MID', x: 146, y: 82 },
@@ -855,10 +1124,9 @@ const Z1_FINGER_WIRES: Record<GloveHand, FingerVerticalWireDef[]> = {
     {
       finger: 'ring',
       region: 'right_ring_finger',
-      label: 'Right Ring Finger',
-      yWireId: 'Y4',
-      yWireLabel: 'Y4 (Ring)',
-      pathD: 'M 178 48 L 178 92 L 178 136 L 175 320',
+      label: 'Ring Finger',
+      yWireId: 'Y-RF',
+      pathD: 'M 178 48 L 178 92 L 178 136',
       dots: [
         { segment: 'tip', label: 'Distal Tip', shortLabel: 'TIP', x: 178, y: 48 },
         { segment: 'mid', label: 'Proximal Interphalangeal (PIP)', shortLabel: 'MID', x: 178, y: 92 },
@@ -868,10 +1136,9 @@ const Z1_FINGER_WIRES: Record<GloveHand, FingerVerticalWireDef[]> = {
     {
       finger: 'little',
       region: 'right_little_finger',
-      label: 'Right Little Finger',
-      yWireId: 'Y5',
-      yWireLabel: 'Y5 (Little)',
-      pathD: 'M 218 78 L 212 117 L 206 156 Q 195 240 185 320',
+      label: 'Little Finger',
+      yWireId: 'Y-LF',
+      pathD: 'M 218 78 L 212 117 L 206 156',
       dots: [
         { segment: 'tip', label: 'Distal Tip', shortLabel: 'TIP', x: 218, y: 78 },
         { segment: 'mid', label: 'Proximal Interphalangeal (PIP)', shortLabel: 'MID', x: 212, y: 117 },
@@ -887,9 +1154,12 @@ interface Hand2DDiagramProps {
   channels: any[];
   isChannelFaulted: (channelId: string) => boolean;
   isZoneFaulted: (region: GloveRegion) => boolean;
+  isIntersectionFaulted: (xNum: number, yNum: number) => boolean;
   selectedChannelId: string | null;
+  selectedIntersection: SelectedIntersection | null;
   selectedZone: GloveRegion | null;
   onSelectChannel: (id: string) => void;
+  onSelectIntersection: (intSec: SelectedIntersection) => void;
   onSelectZone: (zone: GloveRegion) => void;
 }
 
@@ -899,9 +1169,12 @@ const Hand2DDiagram: React.FC<Hand2DDiagramProps> = ({
   channels: _channels,
   isChannelFaulted,
   isZoneFaulted,
+  isIntersectionFaulted,
   selectedChannelId,
+  selectedIntersection,
   selectedZone,
   onSelectChannel,
+  onSelectIntersection,
   onSelectZone
 }) => {
   const isRight = hand === 'right';
@@ -922,7 +1195,7 @@ const Hand2DDiagram: React.FC<Hand2DDiagramProps> = ({
 
     if (faulted) {
       return {
-        fill: 'rgba(255, 42, 42, 0.25)',
+        fill: 'rgba(255, 42, 42, 0.22)',
         stroke: '#ff2a2a',
         strokeWidth: isSelected ? 3 : 2,
         filter: 'drop-shadow(0 0 8px rgba(255,42,42,0.8))',
@@ -932,7 +1205,7 @@ const Hand2DDiagram: React.FC<Hand2DDiagramProps> = ({
 
     if (isSelected) {
       return {
-        fill: 'rgba(0, 240, 255, 0.2)',
+        fill: 'rgba(0, 240, 255, 0.18)',
         stroke: '#00f0ff',
         strokeWidth: 2.5,
         filter: 'drop-shadow(0 0 8px rgba(0,240,255,0.8))',
@@ -948,7 +1221,31 @@ const Hand2DDiagram: React.FC<Hand2DDiagramProps> = ({
     };
   };
 
-  const fingerWires = Z1_FINGER_WIRES[hand];
+  const fingerWires = FINGER_WIRES[hand];
+  const vertWires = view === 'front' ? FRONT_VERT_Y_WIRES : BACK_VERT_Y_WIRES;
+  const prefix = hand === 'left' ? 'L' : 'R';
+
+  // Check if an intersection is active on this view
+  const isIntersectionTargeted = selectedIntersection && selectedIntersection.aspect === view;
+  const targetX = selectedIntersection?.xNum;
+  const targetY = selectedIntersection?.yNum;
+
+  // Build the vertical wire SVG paths running continuously across all 24 horizontal rows
+  const vertWirePaths = useMemo(() => {
+    return vertWires.map(col => {
+      // Calculate points along every horizontal row
+      const pts = HORIZ_X_WIRES.map(row => {
+        const x = row.span[0] + col.u * (row.span[1] - row.span[0]);
+        return `${x.toFixed(1)} ${row.y.toFixed(1)}`;
+      });
+      return {
+        ...col,
+        pathD: `M ${pts.join(' L ')}`,
+        xTop: HORIZ_X_WIRES[0].span[0] + col.u * (HORIZ_X_WIRES[0].span[1] - HORIZ_X_WIRES[0].span[0]),
+        xBottom: HORIZ_X_WIRES[23].span[0] + col.u * (HORIZ_X_WIRES[23].span[1] - HORIZ_X_WIRES[23].span[0])
+      };
+    });
+  }, [vertWires]);
 
   return (
     <svg 
@@ -956,7 +1253,7 @@ const Hand2DDiagram: React.FC<Hand2DDiagramProps> = ({
       style={{ 
         width: '100%', 
         height: '100%', 
-        maxHeight: '640px',
+        maxHeight: '660px',
         overflow: 'visible'
       }}
     >
@@ -966,193 +1263,118 @@ const Hand2DDiagram: React.FC<Hand2DDiagramProps> = ({
           <stop offset="60%" stopColor="#ff2a2a" stopOpacity="0.45" />
           <stop offset="100%" stopColor="#ff2a2a" stopOpacity="0" />
         </radialGradient>
-        <radialGradient id={`glow-healthy-${hand}-${view}`} cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="#00f0ff" stopOpacity="0.85" />
-          <stop offset="65%" stopColor="#00f0ff" stopOpacity="0.25" />
-          <stop offset="100%" stopColor="#00f0ff" stopOpacity="0" />
-        </radialGradient>
-        <radialGradient id={`glow-selected-${hand}-${view}`} cx="50%" cy="50%" r="50%">
+        <radialGradient id={`glow-target-${hand}-${view}`} cx="50%" cy="50%" r="50%">
           <stop offset="0%" stopColor="#00f0ff" stopOpacity="1" />
-          <stop offset="50%" stopColor="#00f0ff" stopOpacity="0.5" />
+          <stop offset="50%" stopColor="#00f0ff" stopOpacity="0.55" />
           <stop offset="100%" stopColor="#00f0ff" stopOpacity="0" />
         </radialGradient>
       </defs>
 
-      {/* Main Graphics Group (flipped via SVG transform if needed) */}
+      {/* Main Hand & Arm Graphics Group (flipped via SVG transform if needed) */}
       <g transform={flipX ? 'translate(340, 0) scale(-1, 1)' : undefined}>
         
-        {/* ========================================================================= */}
-        {/* SILHOUETTES: ZONE 1 (HAND) & ZONE 2 (FOREARM WRIST TO ELBOW)              */}
-        {/* ========================================================================= */}
+        {/* Anatomical Silhouettes: Hand & Forearm Sleeve */}
         <g style={{ cursor: 'pointer' }}>
-          {/* Zone 1: Wrist & Palm Region */}
+          {/* Hand & Palm */}
           <path
             d="M 90 320 C 85 280, 80 250, 75 220 C 70 190, 80 160, 95 150 C 130 145, 170 145, 205 155 C 220 170, 225 210, 220 250 C 215 285, 210 320, 210 320 Z"
             style={getZoneStyle(palmRegion)}
             onClick={() => onSelectZone(palmRegion)}
           />
 
-          {/* Zone 1: Thumb */}
+          {/* Forearm Sleeve down to Elbow */}
+          <path
+            d="M 90 320 L 68 635 C 110 650, 190 650, 232 635 L 210 320 Z"
+            style={getZoneStyle(forearmRegion)}
+            onClick={() => onSelectZone(forearmRegion)}
+          />
+
+          {/* Thumb */}
           <path
             d="M 75 220 C 50 200, 35 170, 30 140 C 28 120, 45 110, 60 125 C 75 140, 85 165, 95 185 Z"
             style={getZoneStyle(thumbRegion)}
             onClick={() => onSelectZone(thumbRegion)}
           />
 
-          {/* Zone 1: Index Finger */}
+          {/* Index Finger */}
           <path
             d="M 95 150 C 95 115, 95 80, 100 45 C 102 30, 118 30, 120 45 C 122 80, 125 115, 125 147 Z"
             style={getZoneStyle(indexRegion)}
             onClick={() => onSelectZone(indexRegion)}
           />
 
-          {/* Zone 1: Middle Finger */}
+          {/* Middle Finger */}
           <path
             d="M 127 146 C 130 105, 133 65, 137 25 C 139 12, 156 12, 158 25 C 160 65, 160 105, 160 146 Z"
             style={getZoneStyle(middleRegion)}
             onClick={() => onSelectZone(middleRegion)}
           />
 
-          {/* Zone 1: Ring Finger */}
+          {/* Ring Finger */}
           <path
             d="M 163 147 C 165 110, 168 75, 172 40 C 174 28, 189 28, 191 40 C 193 75, 193 110, 193 150 Z"
             style={getZoneStyle(ringRegion)}
             onClick={() => onSelectZone(ringRegion)}
           />
 
-          {/* Zone 1: Little Finger */}
+          {/* Little Finger */}
           <path
             d="M 195 152 C 200 120, 205 95, 210 75 C 212 62, 226 62, 228 75 C 227 100, 223 135, 218 165 Z"
             style={getZoneStyle(littleRegion)}
             onClick={() => onSelectZone(littleRegion)}
           />
-
-          {/* Zone 2: Forearm Sleeve (Wrist to Elbow) */}
-          <path
-            d="M 90 330 L 68 640 C 110 655, 190 655, 232 640 L 210 330 Z"
-            style={getZoneStyle(forearmRegion)}
-            onClick={() => onSelectZone(forearmRegion)}
-          />
         </g>
 
-        {/* ========================================================================= */}
-        {/* ZONE 1: HAND OPTICAL WIRES & 3 EQUIDISTANT DOTS PER FINGER                */}
-        {/* ========================================================================= */}
-
-        {/* 1. Finger Vertical Wires: Y1..Y5 (1 per finger, ending at wrist) */}
+        {/* 1. Finger Vertical Wires (5 wires with 3 equidistant dots each) */}
         <g>
           {fingerWires.map(fw => {
-            const isWireSelected = selectedChannelId === fw.yWireId || selectedChannelId?.includes(fw.yWireId);
-            const isWireFaulted = isChannelFaulted(fw.yWireId) || isChannelFaulted(`Z1-${hand === 'left' ? 'L' : 'R'}-${fw.yWireId}`);
+            const wireKey = `${prefix}-${fw.yWireId}`;
+            const isWireSelected = selectedChannelId === wireKey || selectedChannelId === fw.yWireId;
+            const isWireFaulted = isChannelFaulted(wireKey);
 
             return (
               <g 
                 key={fw.finger}
                 onClick={(e) => {
                   e.stopPropagation();
-                  onSelectChannel(`Z1-${hand === 'left' ? 'L' : 'R'}-${fw.yWireId}`);
+                  onSelectChannel(wireKey);
                   onSelectZone(fw.region);
                 }}
                 style={{ cursor: 'pointer' }}
               >
-                <title>{`Vertical Wire: ${fw.yWireLabel}`}</title>
-                {/* Finger vertical wire path */}
+                <title>{`${fw.label} Vertical Wire (${fw.yWireId})`}</title>
                 <path
                   d={fw.pathD}
                   fill="none"
-                  stroke={isWireFaulted ? '#ff2a2a' : isWireSelected ? '#00f0ff' : 'rgba(0, 240, 255, 0.65)'}
-                  strokeWidth={isWireSelected ? 2.5 : 1.8}
+                  stroke={isWireFaulted ? '#ff2a2a' : isWireSelected ? '#00f0ff' : 'rgba(0, 240, 255, 0.45)'}
+                  strokeWidth={isWireSelected ? 2.5 : 1.5}
                 />
 
-                {/* Fingertip Label */}
-                <text
-                  x={fw.dots[0].x}
-                  y={fw.dots[0].y - 10}
-                  textAnchor="middle"
-                  fill={isWireFaulted ? '#ff6b6b' : isWireSelected ? '#00f0ff' : '#ffaa00'}
-                  fontSize="8.5"
-                  fontFamily="monospace"
-                  fontWeight="bold"
-                >
-                  {fw.yWireId}
-                </text>
-
-                {/* 3 Equidistant Dots on this vertical finger wire */}
-                {fw.dots.map((dot, dIdx) => {
-                  const dotChannelId = `Z1-${hand === 'left' ? 'L' : 'R'}-${fw.yWireId}-D${dIdx + 1}`;
-                  const isDotSelected = selectedChannelId === dotChannelId || isWireSelected;
-                  const isDotFaulted = isWireFaulted || isChannelFaulted(dotChannelId);
-
-                  return (
-                    <g 
-                      key={dot.segment}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onSelectChannel(`Z1-${hand === 'left' ? 'L' : 'R'}-${fw.yWireId}`);
-                        onSelectZone(fw.region);
-                      }}
-                    >
-                      <title>{`${fw.label} — ${dot.label} (${dot.shortLabel})\nPosition: X=${dot.x}, Y=${dot.y}\nWire: ${fw.yWireId}`}</title>
-                      {/* Fault Glow */}
-                      {isDotFaulted && (
-                        <circle cx={dot.x} cy={dot.y} r={12} fill={`url(#glow-fault-${hand}-${view})`} />
-                      )}
-                      {/* Selection Glow */}
-                      {isDotSelected && !isDotFaulted && (
-                        <circle cx={dot.x} cy={dot.y} r={11} fill={`url(#glow-selected-${hand}-${view})`} />
-                      )}
-                      {/* Selection Ring */}
-                      {isDotSelected && (
-                        <circle cx={dot.x} cy={dot.y} r={8.5} fill="none" stroke={isDotFaulted ? '#ff2a2a' : '#00f0ff'} strokeWidth={1.5} strokeDasharray="2 2" />
-                      )}
-                      {/* Core Dot */}
-                      <circle
-                        cx={dot.x}
-                        cy={dot.y}
-                        r={isDotSelected ? 5.5 : 4.5}
-                        fill={isDotFaulted ? '#ff2a2a' : isDotSelected ? '#00f0ff' : 'var(--status-healthy)'}
-                        stroke={isDotFaulted ? '#ffffff' : '#020813'}
-                        strokeWidth={isDotSelected ? 2 : 1.2}
-                      />
-                      {/* Optic Pin */}
-                      <circle cx={dot.x} cy={dot.y} r={1.5} fill="#ffffff" opacity={0.95} />
-                    </g>
-                  );
-                })}
+                {/* 3 Equidistant Dots */}
+                {fw.dots.map(dot => (
+                  <g key={dot.segment}>
+                    <circle
+                      cx={dot.x}
+                      cy={dot.y}
+                      r={4.2}
+                      fill={isWireFaulted ? '#ff2a2a' : isWireSelected ? '#00f0ff' : 'var(--status-healthy)'}
+                      stroke="#020813"
+                      strokeWidth={1.2}
+                    />
+                    <circle cx={dot.x} cy={dot.y} r={1.5} fill="#ffffff" opacity={0.9} />
+                  </g>
+                ))}
               </g>
             );
           })}
         </g>
 
-        {/* 2. Zone 1 Knuckle Band 20 Horizontal Wires (X1..X20 exclusively across Knuckles) */}
+        {/* 2. 24 Horizontal Wires (X1..X24 from Knuckles to Elbow, equally spaced) */}
         <g>
-          {/* Subtle Knuckle Band Region Boundary */}
-          <rect
-            x="76"
-            y="134"
-            width="146"
-            height="46"
-            rx="4"
-            fill="rgba(0, 240, 255, 0.03)"
-            stroke="rgba(0, 240, 255, 0.2)"
-            strokeWidth="0.8"
-            strokeDasharray="3 3"
-          />
-          <text
-            x="226"
-            y="158"
-            fill="rgba(0, 240, 255, 0.6)"
-            fontSize="5.5"
-            fontFamily="monospace"
-            fontWeight="bold"
-          >
-            KNUCKLE BAND (20 X-WIRES)
-          </text>
-
-          {Z1_KNUCKLE_X_WIRES.map(row => {
-            const wireKey = `Z1-${hand === 'left' ? 'L' : 'R'}-X${row.num}`;
-            const isRowSelected = selectedChannelId === wireKey || selectedChannelId === row.id;
-            const isRowFaulted = isChannelFaulted(wireKey) || isChannelFaulted(row.id);
+          {HORIZ_X_WIRES.map(row => {
+            const wireKey = `${prefix}-X${row.num}`;
+            const isRowSelected = selectedChannelId === wireKey || (isIntersectionTargeted && targetX === row.num);
+            const isRowFaulted = isChannelFaulted(wireKey);
 
             return (
               <g 
@@ -1160,27 +1382,28 @@ const Hand2DDiagram: React.FC<Hand2DDiagramProps> = ({
                 onClick={(e) => {
                   e.stopPropagation();
                   onSelectChannel(wireKey);
-                  onSelectZone(palmRegion);
+                  onSelectZone(row.y <= 325 ? palmRegion : forearmRegion);
                 }}
                 style={{ cursor: 'pointer' }}
               >
-                <title>{`Zone 1 Knuckle Wire: X${row.num} [Knuckle Band Row ${row.num}/20]`}</title>
-                {/* Horizontal Wire Line */}
+                <title>{`Horizontal Wire: X${row.num} (Knuckles to Elbow Row ${row.num}/24)`}</title>
+                {/* Horizontal Line */}
                 <line
                   x1={row.span[0]}
                   y1={row.y}
                   x2={row.span[1]}
                   y2={row.y}
-                  stroke={isRowFaulted ? '#ff2a2a' : isRowSelected ? '#00f0ff' : 'rgba(0, 240, 255, 0.45)'}
-                  strokeWidth={isRowSelected ? 1.8 : 0.85}
+                  stroke={isRowFaulted ? '#ff2a2a' : isRowSelected ? '#00f0ff' : 'rgba(0, 240, 255, 0.35)'}
+                  strokeWidth={isRowSelected ? 2.2 : 0.9}
+                  strokeDasharray={isRowSelected ? undefined : '2 2'}
                 />
-                {/* Wire Tag Number */}
+                {/* Row Number Tag */}
                 <text
                   x={row.span[0] - 3}
-                  y={row.y + 1.8}
+                  y={row.y + 2.2}
                   textAnchor="end"
                   fill={isRowFaulted ? '#ff6b6b' : isRowSelected ? '#00f0ff' : 'rgba(0, 240, 255, 0.65)'}
-                  fontSize="5"
+                  fontSize="5.5"
                   fontFamily="monospace"
                   fontWeight="600"
                 >
@@ -1191,72 +1414,12 @@ const Hand2DDiagram: React.FC<Hand2DDiagramProps> = ({
           })}
         </g>
 
-        {/* ========================================================================= */}
-        {/* WRIST CUFF DIVIDER (ZONE 1 / ZONE 2 BOUNDARY)                              */}
-        {/* ========================================================================= */}
+        {/* 3. 10 Vertical Wires from Knuckles to Elbow (Y1..Y10 on Front / Y11..Y20 on Back) */}
         <g>
-          <rect x="88" y="322" width="124" height="6" rx="3" fill="rgba(0, 240, 255, 0.2)" stroke="#00f0ff" strokeWidth="1" />
-          <text x="150" y="327" textAnchor="middle" fill="#00f0ff" fontSize="5.5" fontFamily="monospace" fontWeight="bold" letterSpacing="0.8">
-            WRIST CUFF (Z1 ▲ | ▼ Z2)
-          </text>
-        </g>
-
-        {/* ========================================================================= */}
-        {/* ZONE 2: FOREARM (WRIST TO ELBOW) — 24 HORIZONTAL & 20 VERTICAL WIRES      */}
-        {/* ========================================================================= */}
-
-        {/* Zone 2: 24 Horizontal Wires (Z2-X1..X24) */}
-        <g>
-          {Z2_FOREARM_X_WIRES.map(row => {
-            const wireKey = `Z2-${hand === 'left' ? 'L' : 'R'}-X${row.num}`;
-            const isRowSelected = selectedChannelId === wireKey || selectedChannelId === row.id;
-            const isRowFaulted = isChannelFaulted(wireKey) || isChannelFaulted(row.id);
-
-            return (
-              <g 
-                key={row.id}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onSelectChannel(wireKey);
-                  onSelectZone(forearmRegion);
-                }}
-                style={{ cursor: 'pointer' }}
-              >
-                <title>{`Zone 2 Forearm Wire: X${row.num} [Row ${row.num}/24]`}</title>
-                <line
-                  x1={row.span[0]}
-                  y1={row.y}
-                  x2={row.span[1]}
-                  y2={row.y}
-                  stroke={isRowFaulted ? '#ff2a2a' : isRowSelected ? '#00f0ff' : 'rgba(255, 170, 0, 0.4)'}
-                  strokeWidth={isRowSelected ? 2 : 1}
-                  strokeDasharray={isRowSelected ? undefined : '3 2'}
-                />
-                <text
-                  x={row.span[0] - 4}
-                  y={row.y + 2.5}
-                  textAnchor="end"
-                  fill={isRowFaulted ? '#ff6b6b' : isRowSelected ? '#00f0ff' : 'rgba(255, 170, 0, 0.7)'}
-                  fontSize="6"
-                  fontFamily="monospace"
-                  fontWeight="600"
-                >
-                  {`X${row.num}`}
-                </text>
-              </g>
-            );
-          })}
-        </g>
-
-        {/* Zone 2: 20 Vertical Wires (Z2-Y1..Y20) */}
-        <g>
-          {Z2_FOREARM_Y_COLS.map(col => {
-            const wireKey = `Z2-${hand === 'left' ? 'L' : 'R'}-Y${col.num}`;
-            const isColSelected = selectedChannelId === wireKey || selectedChannelId === col.id;
-            const isColFaulted = isChannelFaulted(wireKey) || isChannelFaulted(col.id);
-
-            const xTop = 90 + col.u * 120;
-            const xBottom = 68 + col.u * 164;
+          {vertWirePaths.map(col => {
+            const wireKey = `${prefix}-Y${col.num}`;
+            const isColSelected = selectedChannelId === wireKey || (isIntersectionTargeted && targetY === col.num);
+            const isColFaulted = isChannelFaulted(wireKey);
 
             return (
               <g 
@@ -1264,25 +1427,36 @@ const Hand2DDiagram: React.FC<Hand2DDiagramProps> = ({
                 onClick={(e) => {
                   e.stopPropagation();
                   onSelectChannel(wireKey);
-                  onSelectZone(forearmRegion);
+                  onSelectZone(palmRegion);
                 }}
                 style={{ cursor: 'pointer' }}
               >
-                <title>{`Zone 2 Forearm Wire: Y${col.num} [Col ${col.num}/20]`}</title>
-                <line
-                  x1={xTop}
-                  y1={338}
-                  x2={xBottom}
-                  y2={636}
-                  stroke={isColFaulted ? '#ff2a2a' : isColSelected ? '#00f0ff' : 'rgba(0, 240, 255, 0.4)'}
-                  strokeWidth={isColSelected ? 2 : 1}
+                <title>{`Vertical Wire: Y${col.num} (${view === 'front' ? 'Front' : 'Back'} Column ${view === 'front' ? col.num : col.num - 10}/10: Knuckles to Elbow)`}</title>
+                {/* Vertical Line running continuously from Knuckles to Elbow */}
+                <path
+                  d={col.pathD}
+                  fill="none"
+                  stroke={isColFaulted ? '#ff2a2a' : isColSelected ? '#ffaa00' : 'rgba(255, 170, 0, 0.4)'}
+                  strokeWidth={isColSelected ? 2.2 : 1}
                 />
-                {/* Column Tag at bottom */}
+                {/* Top Column Tag (above Knuckles) */}
                 <text
-                  x={xBottom}
-                  y={648}
+                  x={col.xTop}
+                  y={133}
                   textAnchor="middle"
-                  fill={isColFaulted ? '#ff6b6b' : isColSelected ? '#00f0ff' : 'rgba(0, 240, 255, 0.7)'}
+                  fill={isColFaulted ? '#ff6b6b' : isColSelected ? '#ffaa00' : 'rgba(255, 170, 0, 0.8)'}
+                  fontSize="5.5"
+                  fontFamily="monospace"
+                  fontWeight="bold"
+                >
+                  {`Y${col.num}`}
+                </text>
+                {/* Bottom Column Tag (below Elbow) */}
+                <text
+                  x={col.xBottom}
+                  y={644}
+                  textAnchor="middle"
+                  fill={isColFaulted ? '#ff6b6b' : isColSelected ? '#ffaa00' : 'rgba(255, 170, 0, 0.8)'}
                   fontSize="5.5"
                   fontFamily="monospace"
                   fontWeight="bold"
@@ -1294,36 +1468,58 @@ const Hand2DDiagram: React.FC<Hand2DDiagramProps> = ({
           })}
         </g>
 
-        {/* Zone 2 Sample Grid Junction Dots */}
+        {/* 4. Complete 24x10 Intersection Points (Knuckles to Elbow) */}
         <g>
-          {[0, 5, 11, 17, 23].map(rIdx => {
-            const row = Z2_FOREARM_X_WIRES[rIdx];
-            return [0, 4, 9, 14, 19].map(cIdx => {
-              const col = Z2_FOREARM_Y_COLS[cIdx];
+          {HORIZ_X_WIRES.map(row => {
+            return vertWires.map(col => {
               const jX = row.span[0] + col.u * (row.span[1] - row.span[0]);
               const jY = row.y;
-              const junctionId = `Z2-${hand === 'left' ? 'L' : 'R'}-X${row.num}-Y${col.num}`;
-              const isJunctionFaulted = isChannelFaulted(junctionId);
-              const isJunctionSelected = selectedChannelId === junctionId;
+              const isTargeted = isIntersectionTargeted && targetX === row.num && targetY === col.num;
+              const isFaulted = isIntersectionFaulted(row.num, col.num);
 
               return (
-                <circle
-                  key={junctionId}
-                  cx={jX}
-                  cy={jY}
-                  r={isJunctionSelected ? 3.5 : 2}
-                  fill={isJunctionFaulted ? '#ff2a2a' : isJunctionSelected ? '#00f0ff' : 'rgba(0, 240, 255, 0.6)'}
-                  stroke="#020813"
-                  strokeWidth={0.8}
+                <g 
+                  key={`int-${row.num}-${col.num}`}
                   onClick={(e) => {
                     e.stopPropagation();
-                    onSelectChannel(`Z2-${hand === 'left' ? 'L' : 'R'}-X${row.num}`);
-                    onSelectZone(forearmRegion);
+                    onSelectIntersection({
+                      xNum: row.num,
+                      yNum: col.num,
+                      xId: `X${row.num}`,
+                      yId: `Y${col.num}`,
+                      aspect: view
+                    });
+                    onSelectZone(row.y <= 325 ? palmRegion : forearmRegion);
                   }}
                   style={{ cursor: 'pointer' }}
                 >
-                  <title>{`Zone 2 Junction (X${row.num}, Y${col.num})`}</title>
-                </circle>
+                  <title>{`Intersection (X${row.num}, Y${col.num})\nLocation: Knuckles-to-Elbow Matrix\nStatus: ${isFaulted ? 'FAULT' : 'NOMINAL'}\nAspect: ${view.toUpperCase()}`}</title>
+                  
+                  {/* Targeted Crosshair Glow */}
+                  {isTargeted && (
+                    <>
+                      <circle cx={jX} cy={jY} r={16} fill={`url(#glow-target-${hand}-${view})`} />
+                      <circle cx={jX} cy={jY} r={9} fill="none" stroke="#00f0ff" strokeWidth={1.8} strokeDasharray="3 2" />
+                      <line x1={jX - 12} y1={jY} x2={jX + 12} y2={jY} stroke="#00f0ff" strokeWidth={1.2} />
+                      <line x1={jX} y1={jY - 12} x2={jX} y2={jY + 12} stroke="#00f0ff" strokeWidth={1.2} />
+                    </>
+                  )}
+
+                  {/* Fault Glow */}
+                  {isFaulted && !isTargeted && (
+                    <circle cx={jX} cy={jY} r={8} fill={`url(#glow-fault-${hand}-${view})`} />
+                  )}
+
+                  {/* Intersection Node Dot */}
+                  <circle
+                    cx={jX}
+                    cy={jY}
+                    r={isTargeted ? 5 : isFaulted ? 3.2 : 1.8}
+                    fill={isFaulted ? '#ff2a2a' : isTargeted ? '#00f0ff' : 'rgba(0, 240, 255, 0.55)'}
+                    stroke={isTargeted ? '#ffffff' : '#020813'}
+                    strokeWidth={isTargeted ? 1.8 : 0.6}
+                  />
+                </g>
               );
             });
           })}
@@ -1333,14 +1529,16 @@ const Hand2DDiagram: React.FC<Hand2DDiagramProps> = ({
       {/* Upright Bottom Legend */}
       <text
         x="170"
-        y="670"
+        y="668"
         textAnchor="middle"
         fill="var(--text-muted)"
         fontSize="9"
         letterSpacing="1"
         fontWeight="600"
       >
-        {view.toUpperCase()} ASPECT &bull; Z1: HAND (Y1..Y5 + 20 X-WIRES) &bull; Z2: ARM (24 X &times; 20 Y)
+        {view === 'front' 
+          ? 'FRONT VIEW (PALMAR) • 24 X-WIRES × 10 Y-WIRES (Y1..Y10) [KNUCKLES TO ELBOW]' 
+          : 'BACK VIEW (DORSAL) • 24 X-WIRES × 10 Y-WIRES (Y11..Y20) [KNUCKLES TO ELBOW]'}
       </text>
     </svg>
   );
