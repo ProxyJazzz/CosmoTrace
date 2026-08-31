@@ -65,11 +65,11 @@ export interface EventLogEntry {
 
 export type GloveHand = 'left' | 'right';
 
-export type GloveFinger = 'palm' | 'thumb' | 'index' | 'middle' | 'ring' | 'little';
+export type GloveFinger = 'palm' | 'thumb' | 'index' | 'middle' | 'ring' | 'little' | 'forearm';
 
 export type GloveRegion = 
-  | 'left_palm' | 'left_thumb' | 'left_index_finger' | 'left_middle_finger' | 'left_ring_finger' | 'left_little_finger'
-  | 'right_palm' | 'right_thumb' | 'right_index_finger' | 'right_middle_finger' | 'right_ring_finger' | 'right_little_finger';
+  | 'left_palm' | 'left_thumb' | 'left_index_finger' | 'left_middle_finger' | 'left_ring_finger' | 'left_little_finger' | 'left_forearm'
+  | 'right_palm' | 'right_thumb' | 'right_index_finger' | 'right_middle_finger' | 'right_ring_finger' | 'right_little_finger' | 'right_forearm';
 
 export interface CalibratedGloveSensor {
   id: string;
