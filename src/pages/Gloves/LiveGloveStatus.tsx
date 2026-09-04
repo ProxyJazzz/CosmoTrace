@@ -81,7 +81,7 @@ export const LiveGloveStatus: React.FC = () => {
     setConnectionState
   } = useAppStore();
 
-  const [activeHand, setActiveHand] = useState<GloveHand>('left');
+  const activeHand: GloveHand = 'left';
   
   // Multi-wire selection state: list of wire IDs e.g. ['L-1', 'L-3', 'L-A', 'L-C']
   const [selectedWireIds, setSelectedWireIds] = useState<string[]>([]);
@@ -376,7 +376,7 @@ export const LiveGloveStatus: React.FC = () => {
       const colLetter = matchColRow[1] as VertLetter;
       const rowNum = parseInt(matchColRow[2], 10) as HorizNumber;
       if (VERT_LETTERS.includes(colLetter) && rowNum >= 1 && rowNum <= 10) {
-        setSelectedIntersection({ colLetter, rowNum, aspect: 'front' });
+        setSelectedIntersection({ colLetter, rowNum, aspect: 'back' });
         setSelectedWireIds([`${prefix}-${colLetter}`, `${prefix}-${rowNum}`]);
         return;
       }
@@ -388,7 +388,7 @@ export const LiveGloveStatus: React.FC = () => {
       const rowNum = parseInt(matchRowCol[1], 10) as HorizNumber;
       const colLetter = matchRowCol[2] as VertLetter;
       if (VERT_LETTERS.includes(colLetter) && rowNum >= 1 && rowNum <= 10) {
-        setSelectedIntersection({ colLetter, rowNum, aspect: 'front' });
+        setSelectedIntersection({ colLetter, rowNum, aspect: 'back' });
         setSelectedWireIds([`${prefix}-${colLetter}`, `${prefix}-${rowNum}`]);
         return;
       }
@@ -758,8 +758,8 @@ export const LiveGloveStatus: React.FC = () => {
       <div className={styles.kpiBar}>
         <div className={styles.kpiCard}>
           <span className={styles.kpiLabel}>Monitored Hand</span>
-          <span className={styles.kpiValue} style={{ textTransform: 'capitalize' }}>
-            {activeHand} Glove Matrix
+          <span className={styles.kpiValue}>
+            Left Glove Matrix
           </span>
         </div>
         <div className={styles.kpiCard}>
@@ -1046,28 +1046,16 @@ export const LiveGloveStatus: React.FC = () => {
           </div>
         </aside>
 
-        {/* Center 2D Diagrams: FRONT VIEW & BACK VIEW */}
+        {/* Center 2D Diagram: BACK VIEW (Dorsal Aspect) */}
         <main className={styles.centerViewer}>
           <div className={styles.diagramControls}>
-            <div className={styles.viewTabs}>
-              <button 
-                className={`${styles.tabBtn} ${activeHand === 'left' ? styles.active : ''}`}
-                onClick={() => {
-                  setActiveHand('left');
-                  clearWireSelection();
-                }}
-              >
-                Left Hand & Arm
-              </button>
-              <button 
-                className={`${styles.tabBtn} ${activeHand === 'right' ? styles.active : ''}`}
-                onClick={() => {
-                  setActiveHand('right');
-                  clearWireSelection();
-                }}
-              >
-                Right Hand & Arm
-              </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontWeight: 600, color: 'var(--status-healthy)', fontSize: '0.85rem', letterSpacing: '0.5px' }}>
+                Left Hand &amp; Arm Matrix
+              </span>
+              <span className={styles.zoneBadgeStatus} style={{ fontSize: '0.65rem', padding: '2px 8px' }}>
+                BACK VIEW (DORSAL)
+              </span>
             </div>
 
             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -1077,42 +1065,6 @@ export const LiveGloveStatus: React.FC = () => {
           </div>
 
           <div className={styles.diagramGrid}>
-            {/* FRONT VIEW (Palmar Aspect) */}
-            <div className={styles.diagramCard}>
-              <div className={styles.diagramHeader}>
-                <div className={styles.diagramTitle}>
-                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--status-healthy)', display: 'inline-block' }}></span>
-                  FRONT VIEW (Palmar Aspect)
-                </div>
-                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                  10 Horiz (1&ndash;10) &bull; 6 Vert (A&ndash;F)
-                </span>
-              </div>
-
-              <div className={styles.diagramSvgWrapper} style={{ minHeight: '600px' }}>
-                <Hand2DDiagram 
-                  hand={activeHand}
-                  view="front"
-                  channels={channels.filter(c => c.hand === activeHand)}
-                  isChannelFaulted={isChannelFaulted}
-                  isZoneFaulted={isZoneFaulted}
-                  isIntersectionFaulted={isIntersectionFaulted}
-                  selectedWireIds={selectedWireIds}
-                  selectedIntersection={selectedIntersection}
-                  selectedZone={selectedZone}
-                  onToggleSelectWire={toggleSelectWire}
-                  onSelectIntersection={(intSec) => {
-                    setSelectedIntersection(intSec);
-                    const colId = `${prefix}-${intSec.colLetter}`;
-                    const rowId = `${prefix}-${intSec.rowNum}`;
-                    setSelectedWireIds(prev => Array.from(new Set([...prev, colId, rowId])));
-                    setSearchQuery(`${intSec.colLetter}${intSec.rowNum}`);
-                  }}
-                  onSelectZone={setSelectedZone}
-                />
-              </div>
-            </div>
-
             {/* BACK VIEW (Dorsal Aspect) */}
             <div className={styles.diagramCard}>
               <div className={styles.diagramHeader}>
@@ -1127,9 +1079,9 @@ export const LiveGloveStatus: React.FC = () => {
 
               <div className={styles.diagramSvgWrapper} style={{ minHeight: '600px' }}>
                 <Hand2DDiagram 
-                  hand={activeHand}
+                  hand="left"
                   view="back"
-                  channels={channels.filter(c => c.hand === activeHand)}
+                  channels={channels.filter(c => c.hand === 'left')}
                   isChannelFaulted={isChannelFaulted}
                   isZoneFaulted={isZoneFaulted}
                   isIntersectionFaulted={isIntersectionFaulted}
@@ -1139,8 +1091,8 @@ export const LiveGloveStatus: React.FC = () => {
                   onToggleSelectWire={toggleSelectWire}
                   onSelectIntersection={(intSec) => {
                     setSelectedIntersection(intSec);
-                    const colId = `${prefix}-${intSec.colLetter}`;
-                    const rowId = `${prefix}-${intSec.rowNum}`;
+                    const colId = `L-${intSec.colLetter}`;
+                    const rowId = `L-${intSec.rowNum}`;
                     setSelectedWireIds(prev => Array.from(new Set([...prev, colId, rowId])));
                     setSearchQuery(`${intSec.colLetter}${intSec.rowNum}`);
                   }}
@@ -1813,7 +1765,8 @@ const Hand2DDiagram: React.FC<Hand2DDiagramProps> = ({
                 <text
                   x={row.span[0] - 4}
                   y={row.y + 3}
-                  textAnchor="end"
+                  textAnchor={flipX ? 'start' : 'end'}
+                  transform={flipX ? `translate(${row.span[0] - 4}, ${row.y + 3}) scale(-1, 1) translate(${-(row.span[0] - 4)}, ${-(row.y + 3)})` : undefined}
                   fill={isRowFaulted ? '#ff6b6b' : isRowSelected ? '#00f0ff' : 'rgba(0, 240, 255, 0.85)'}
                   fontSize="7.5"
                   fontFamily="monospace"
@@ -1826,7 +1779,8 @@ const Hand2DDiagram: React.FC<Hand2DDiagramProps> = ({
                 <text
                   x={row.span[1] + 4}
                   y={row.y + 3}
-                  textAnchor="start"
+                  textAnchor={flipX ? 'end' : 'start'}
+                  transform={flipX ? `translate(${row.span[1] + 4}, ${row.y + 3}) scale(-1, 1) translate(${-(row.span[1] + 4)}, ${-(row.y + 3)})` : undefined}
                   fill={isRowFaulted ? '#ff6b6b' : isRowSelected ? '#00f0ff' : 'rgba(0, 240, 255, 0.85)'}
                   fontSize="7.5"
                   fontFamily="monospace"
@@ -1871,6 +1825,7 @@ const Hand2DDiagram: React.FC<Hand2DDiagramProps> = ({
                   x={col.xTop}
                   y={138}
                   textAnchor="middle"
+                  transform={flipX ? `translate(${col.xTop}, 138) scale(-1, 1) translate(${-col.xTop}, -138)` : undefined}
                   fill={isColFaulted ? '#ff6b6b' : isColSelected ? '#ffaa00' : 'rgba(255, 170, 0, 0.9)'}
                   fontSize="8"
                   fontFamily="monospace"
@@ -1884,6 +1839,7 @@ const Hand2DDiagram: React.FC<Hand2DDiagramProps> = ({
                   x={col.xBottom}
                   y={638}
                   textAnchor="middle"
+                  transform={flipX ? `translate(${col.xBottom}, 638) scale(-1, 1) translate(${-col.xBottom}, -638)` : undefined}
                   fill={isColFaulted ? '#ff6b6b' : isColSelected ? '#ffaa00' : 'rgba(255, 170, 0, 0.9)'}
                   fontSize="8"
                   fontFamily="monospace"

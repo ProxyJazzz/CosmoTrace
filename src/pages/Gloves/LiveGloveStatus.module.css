@@ -257,12 +257,12 @@
 }
 
 .diagramGrid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1.5rem;
+  display: flex;
+  justify-content: center;
   flex: 1;
   min-height: 480px;
   align-items: stretch;
+  width: 100%;
 }
 
 .diagramCard {
@@ -274,6 +274,8 @@
   flex-direction: column;
   position: relative;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  width: 100%;
+  max-width: 620px;
 }
 
 .diagramHeader {
