@@ -1386,28 +1386,28 @@ export const LiveGloveStatus: React.FC = () => {
 // - 60 Interactive Matrix Intersections (Col A..F x Row 1..10)
 // ----------------------------------------------------------------------------------
 
+// Per-row horizontal matrix spans [leftX, rightX] calibrated to stay precisely INSIDE hand & forearm silhouettes
+const ROW_SPANS: [number, number][] = [
+  [98, 202], // Row 1: Knuckles (y=150.0)
+  [80, 212], // Row 2: Mid-Palm / Thumb web (y=202.2)
+  [84, 214], // Row 3: Lower Palm (y=254.4)
+  [92, 208], // Row 4: Wrist (y=306.7)
+  [90, 210], // Row 5: Upper Forearm (y=358.9)
+  [86, 214], // Row 6: Mid-Forearm 1 (y=411.1)
+  [83, 217], // Row 7: Mid-Forearm 2 (y=463.3)
+  [79, 221], // Row 8: Lower Forearm 1 (y=515.6)
+  [75, 225], // Row 9: Lower Forearm 2 (y=567.8)
+  [72, 228], // Row 10: Elbow (y=620.0)
+];
+
 // 10 Horizontal Rows (1..10) equally spaced from knuckles (y=150) to elbow (y=620)
 const HORIZ_ROWS = HORIZ_NUMBERS.map((num, idx) => {
   const y = 150 + (idx * (620 - 150) / 9);
-  
-  let leftX: number;
-  let rightX: number;
-
-  if (y <= 325) {
-    // Palm region
-    leftX = 75 - (y > 220 ? (y - 220) * 0.15 : (220 - y) * 0.1);
-    rightX = 220 - (y > 250 ? (y - 250) * 0.15 : 0);
-  } else {
-    // Forearm sleeve down to elbow
-    leftX = 90 - (y - 325) * 0.075;
-    rightX = 210 + (y - 325) * 0.075;
-  }
-
   return {
     num,
     id: `ROW-${num}`,
     y,
-    span: [Math.max(68, leftX), Math.min(232, rightX)]
+    span: ROW_SPANS[idx]
   };
 });
 
@@ -1445,11 +1445,11 @@ const FINGER_WIRES: Record<GloveHand, FingerVerticalWireDef[]> = {
       region: 'left_thumb',
       label: 'Thumb',
       yWireId: 'Y-TH',
-      pathD: 'M 45 122 L 63 157 L 81 192',
+      pathD: 'M 45 122 L 60 155 L 75 188',
       dots: [
         { segment: 'tip', label: 'Distal Tip', shortLabel: 'TIP', x: 45, y: 122 },
-        { segment: 'mid', label: 'Interphalangeal (IP)', shortLabel: 'MID', x: 63, y: 157 },
-        { segment: 'base', label: 'Metacarpophalangeal (MCP)', shortLabel: 'BASE', x: 81, y: 192 }
+        { segment: 'mid', label: 'Interphalangeal (IP)', shortLabel: 'MID', x: 60, y: 155 },
+        { segment: 'base', label: 'Metacarpophalangeal (MCP)', shortLabel: 'BASE', x: 75, y: 188 }
       ]
     },
     {
@@ -1507,11 +1507,11 @@ const FINGER_WIRES: Record<GloveHand, FingerVerticalWireDef[]> = {
       region: 'right_thumb',
       label: 'Thumb',
       yWireId: 'Y-TH',
-      pathD: 'M 45 122 L 63 157 L 81 192',
+      pathD: 'M 45 122 L 60 155 L 75 188',
       dots: [
         { segment: 'tip', label: 'Distal Tip', shortLabel: 'TIP', x: 45, y: 122 },
-        { segment: 'mid', label: 'Interphalangeal (IP)', shortLabel: 'MID', x: 63, y: 157 },
-        { segment: 'base', label: 'Metacarpophalangeal (MCP)', shortLabel: 'BASE', x: 81, y: 192 }
+        { segment: 'mid', label: 'Interphalangeal (IP)', shortLabel: 'MID', x: 60, y: 155 },
+        { segment: 'base', label: 'Metacarpophalangeal (MCP)', shortLabel: 'BASE', x: 75, y: 188 }
       ]
     },
     {
@@ -1701,7 +1701,7 @@ const Hand2DDiagram: React.FC<Hand2DDiagramProps> = ({
 
           {/* Thumb */}
           <path
-            d="M 75 220 C 50 200, 35 170, 30 140 C 28 120, 45 110, 60 125 C 75 140, 85 165, 95 185 Z"
+            d="M 75 220 C 50 200, 35 170, 30 140 C 28 120, 45 110, 60 125 C 75 140, 85 165, 75 220 Z"
             style={getZoneStyle(thumbRegion)}
             onClick={() => onSelectZone(thumbRegion)}
           />
