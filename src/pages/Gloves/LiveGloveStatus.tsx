@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   ArrowLeft, 
@@ -415,93 +415,114 @@ export const LiveGloveStatus: React.FC = () => {
     }
   }, [searchQuery, prefix]);
 
-  // OptiMesh Serial Connection Setup with onFaultUpdate matching { readings, rowFaults, colFaults, pointFaults }
-  const bridge = useMemo(() => {
-    const onFaultUpdate = (payload: FaultUpdatePayload) => {
-      const { readings, rowFaults, colFaults, pointFaults } = payload;
-      setLiveReadings(readings);
-      setSerialPointFaults(pointFaults);
+  // OptiMesh Serial Connection Setup with persistent useRef to prevent reconnect loops & header bar flickering
+  const serialRef = useRef<OptiMeshSerial | null>(null);
 
-      const newFaultedSet = new Set<string>();
-      const activePrefix = activeHand === 'left' ? 'L' : 'R';
+  const handleFaultUpdate = useCallback((payload: FaultUpdatePayload) => {
+    const { readings, rowFaults, colFaults, pointFaults } = payload;
+    setLiveReadings(readings);
+    setSerialPointFaults(pointFaults);
 
-      // Process row faults (e.g. "Row 8", "8")
-      rowFaults.forEach(rf => {
-        const rowNum = rf.replace(/^(?:Row\s*|R)/i, '');
-        if (/^\d+$/.test(rowNum)) {
-          newFaultedSet.add(`${activePrefix}-${rowNum}`);
-          newFaultedSet.add(rf);
-          newFaultedSet.add(rowNum);
-        }
-      });
+    const newFaultedSet = new Set<string>();
+    const activePrefix = activeHand === 'left' ? 'L' : 'R';
 
-      // Process col faults (e.g. "Col D", "D")
-      colFaults.forEach(cf => {
-        const colLetter = cf.replace(/^(?:Col\s*|C)/i, '').toUpperCase();
-        if (/^[A-F]$/.test(colLetter)) {
-          newFaultedSet.add(`${activePrefix}-${colLetter}`);
-          newFaultedSet.add(cf);
-          newFaultedSet.add(colLetter);
-        }
-      });
-
-      // Also flag any reading whose capacity goes below 59%
-      Object.entries(readings).forEach(([key, val]) => {
-        if (typeof val === 'number' && val < FAULT_THRESHOLD_PERCENT) {
-          const rowMatch = key.match(/^(?:R|Row\s*)?(\d+)$/i);
-          if (rowMatch && parseInt(rowMatch[1], 10) >= 1 && parseInt(rowMatch[1], 10) <= 10) {
-            newFaultedSet.add(`${activePrefix}-${rowMatch[1]}`);
-            newFaultedSet.add(`Row ${rowMatch[1]}`);
-            newFaultedSet.add(rowMatch[1]);
-          }
-          const colMatch = key.match(/^(?:C|Col\s*)?([A-F])$/i);
-          if (colMatch) {
-            const letter = colMatch[1].toUpperCase();
-            newFaultedSet.add(`${activePrefix}-${letter}`);
-            newFaultedSet.add(`Col ${letter}`);
-            newFaultedSet.add(letter);
-          }
-        }
-      });
-
-      setSerialFaults(newFaultedSet);
-
-      if (newFaultedSet.size > 0) {
-        triggerAlarm();
+    // Process row faults (e.g. "Row 8", "8")
+    rowFaults.forEach(rf => {
+      const rowNum = rf.replace(/^(?:Row\s*|R)/i, '');
+      if (/^\d+$/.test(rowNum)) {
+        newFaultedSet.add(`${activePrefix}-${rowNum}`);
+        newFaultedSet.add(rf);
+        newFaultedSet.add(rowNum);
       }
+    });
 
+    // Process col faults (e.g. "Col D", "D")
+    colFaults.forEach(cf => {
+      const colLetter = cf.replace(/^(?:Col\s*|C)/i, '').toUpperCase();
+      if (/^[A-F]$/.test(colLetter)) {
+        newFaultedSet.add(`${activePrefix}-${colLetter}`);
+        newFaultedSet.add(cf);
+        newFaultedSet.add(colLetter);
+      }
+    });
+
+    // Also flag any reading whose capacity goes below 59%
+    Object.entries(readings).forEach(([key, val]) => {
+      if (typeof val === 'number' && val < FAULT_THRESHOLD_PERCENT) {
+        const rowMatch = key.match(/^(?:R|Row\s*)?(\d+)$/i);
+        if (rowMatch && parseInt(rowMatch[1], 10) >= 1 && parseInt(rowMatch[1], 10) <= 10) {
+          newFaultedSet.add(`${activePrefix}-${rowMatch[1]}`);
+          newFaultedSet.add(`Row ${rowMatch[1]}`);
+          newFaultedSet.add(rowMatch[1]);
+        }
+        const colMatch = key.match(/^(?:C|Col\s*)?([A-F])$/i);
+        if (colMatch) {
+          const letter = colMatch[1].toUpperCase();
+          newFaultedSet.add(`${activePrefix}-${letter}`);
+          newFaultedSet.add(`Col ${letter}`);
+          newFaultedSet.add(letter);
+        }
+      }
+    });
+
+    setSerialFaults(newFaultedSet);
+
+    if (newFaultedSet.size > 0) {
+      triggerAlarm();
+    }
+
+    if (useAppStore.getState().connectionState !== 'LIVE') {
       setConnectionState('LIVE');
-    };
-
-    const onStatus = (connected: boolean, message?: string) => {
-      if (connected) {
-        setConnectionState('LIVE');
-        setErrorMessage(null);
-      } else {
-        setConnectionState('DISCONNECTED');
-        if (message && message !== 'ESP32 disconnected') {
-          setErrorMessage(message);
-        }
-      }
-    };
-
-    return new OptiMeshSerial(onFaultUpdate, onStatus);
+    }
   }, [activeHand, setConnectionState]);
 
-  // Clean up serial port connection on unmount & auto-reconnect if previously authorized
+  const handleFaultUpdateRef = useRef(handleFaultUpdate);
   useEffect(() => {
-    bridge.autoConnectPreviousPort(115200).catch(() => {});
+    handleFaultUpdateRef.current = handleFaultUpdate;
+  }, [handleFaultUpdate]);
+
+  const handleStatusChange = useCallback((connected: boolean, message?: string) => {
+    if (connected) {
+      if (useAppStore.getState().connectionState !== 'LIVE') {
+        setConnectionState('LIVE');
+      }
+      setErrorMessage(null);
+    } else {
+      if (useAppStore.getState().connectionState !== 'DISCONNECTED') {
+        setConnectionState('DISCONNECTED');
+      }
+      if (message && message !== 'ESP32 disconnected') {
+        setErrorMessage(message);
+      }
+    }
+  }, [setConnectionState]);
+
+  const handleStatusChangeRef = useRef(handleStatusChange);
+  useEffect(() => {
+    handleStatusChangeRef.current = handleStatusChange;
+  }, [handleStatusChange]);
+
+  // Clean up serial port connection on unmount & auto-reconnect ONCE on mount
+  useEffect(() => {
+    const serial = new OptiMeshSerial(
+      (payload: FaultUpdatePayload) => handleFaultUpdateRef.current(payload),
+      (connected, msg) => handleStatusChangeRef.current(connected, msg)
+    );
+    serialRef.current = serial;
+    serial.autoConnectPreviousPort(115200).catch(() => {});
 
     return () => {
-      bridge.disconnect();
+      serial.disconnect();
+      serialRef.current = null;
     };
-  }, [bridge]);
+  }, []);
 
   const connectToESP32 = async (useVendorFilter = false) => {
+    if (!serialRef.current) return;
     setIsConnecting(true);
     setErrorMessage(null);
     try {
-      await bridge.connect(115200, useVendorFilter);
+      await serialRef.current.connect(115200, useVendorFilter);
     } catch (err: any) {
       console.error('[LiveGloveStatus] Serial connection failed:', err);
       const msg = err?.message || 'Failed to open Web Serial port.';

@@ -84,25 +84,37 @@ export function useWebSerial() {
     setConnectionState('LIVE');
   }, [setSensorData, setConnectionState, addEventLogEntry, calibrationMap, gloveCalibrationMap]);
 
+  const handleFaultUpdateRef = useRef(handleFaultUpdate);
+  useEffect(() => {
+    handleFaultUpdateRef.current = handleFaultUpdate;
+  }, [handleFaultUpdate]);
+
   const [serialError, setSerialError] = useState<string | null>(null);
 
   const connectSerial = useCallback(async (baudRate = 115200, useVendorFilter = false) => {
     setSerialError(null);
     if (!serialRef.current) {
-      serialRef.current = new OptiMeshSerial(handleFaultUpdate, (connected, msg) => {
-        setIsConnected(connected);
-        if (connected) {
-          setConnectionState('LIVE');
-          setSerialError(null);
-        } else {
-          setConnectionState('DISCONNECTED');
-          if (msg && msg !== 'ESP32 disconnected') {
-            setSerialError(msg);
+      serialRef.current = new OptiMeshSerial(
+        (payload: FaultUpdatePayload | any) => handleFaultUpdateRef.current(payload),
+        (connected, msg) => {
+          setIsConnected(connected);
+          if (connected) {
+            if (useAppStore.getState().connectionState !== 'LIVE') {
+              setConnectionState('LIVE');
+            }
+            setSerialError(null);
+          } else {
+            if (useAppStore.getState().connectionState !== 'DISCONNECTED') {
+              setConnectionState('DISCONNECTED');
+            }
+            if (msg && msg !== 'ESP32 disconnected') {
+              setSerialError(msg);
+            }
           }
         }
-      });
+      );
     } else {
-      serialRef.current.setFaultUpdateCallback(handleFaultUpdate);
+      serialRef.current.setFaultUpdateCallback((payload: FaultUpdatePayload | any) => handleFaultUpdateRef.current(payload));
     }
 
     try {
@@ -116,7 +128,7 @@ export function useWebSerial() {
       setConnectionState('DISCONNECTED');
       return false;
     }
-  }, [handleFaultUpdate, setConnectionState]);
+  }, [setConnectionState]);
 
   const disconnectSerial = useCallback(async () => {
     if (serialRef.current) {
@@ -128,16 +140,23 @@ export function useWebSerial() {
   }, [setConnectionState]);
 
   useEffect(() => {
-    // Attempt auto-connect if previous port exists
+    // Attempt auto-connect once on mount if previous port exists
     if (!serialRef.current) {
-      const serial = new OptiMeshSerial(handleFaultUpdate, (connected) => {
-        setIsConnected(connected);
-        if (connected) {
-          setConnectionState('LIVE');
-        } else {
-          setConnectionState('DISCONNECTED');
+      const serial = new OptiMeshSerial(
+        (payload: FaultUpdatePayload | any) => handleFaultUpdateRef.current(payload),
+        (connected) => {
+          setIsConnected(connected);
+          if (connected) {
+            if (useAppStore.getState().connectionState !== 'LIVE') {
+              setConnectionState('LIVE');
+            }
+          } else {
+            if (useAppStore.getState().connectionState !== 'DISCONNECTED') {
+              setConnectionState('DISCONNECTED');
+            }
+          }
         }
-      });
+      );
       serialRef.current = serial;
       serial.autoConnectPreviousPort(115200).catch(() => {});
     }
@@ -145,9 +164,10 @@ export function useWebSerial() {
     return () => {
       if (serialRef.current) {
         serialRef.current.disconnect();
+        serialRef.current = null;
       }
     };
-  }, [handleFaultUpdate, setConnectionState]);
+  }, []);
 
   return {
     isConnected,
