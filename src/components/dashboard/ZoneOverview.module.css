@@ -1,12 +1,14 @@
 .container {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0.75rem;
+  width: 100%;
+  min-width: 0;
 }
 
 .title {
-  font-size: 1rem;
-  font-weight: 600;
+  font-size: 0.9rem;
+  font-weight: 700;
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 1px;
@@ -14,23 +16,27 @@
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 0.75rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.6rem;
+  width: 100%;
 }
 
 .zoneCard {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  padding: 1rem;
+  gap: 0.4rem;
+  padding: 0.75rem 0.85rem;
   border-radius: 6px;
   background-color: var(--bg-panel-light);
   border: 1px solid var(--border-color);
   transition: all 0.2s;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .zoneCard:hover {
   background-color: rgba(0, 240, 255, 0.05);
+  border-color: rgba(0, 240, 255, 0.4);
 }
 
 .zoneCard.broken {
@@ -47,18 +53,28 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
 }
 
 .name {
   font-weight: 600;
-  font-size: 0.875rem;
+  font-size: 0.82rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  color: var(--text-main);
 }
 
 .status {
-  font-size: 0.75rem;
-  padding: 0.25rem 0.5rem;
+  font-size: 0.68rem;
+  padding: 0.15rem 0.45rem;
   border-radius: 4px;
-  font-weight: 600;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .status.healthy {
@@ -73,12 +89,16 @@
 
 .status.unknown {
   color: var(--text-muted);
-  background-color: rgba(255, 255, 255, 0.05);
+  background-color: rgba(255, 255, 255, 0.08);
 }
 
 .stats {
   display: flex;
   justify-content: space-between;
-  font-size: 0.75rem;
+  align-items: center;
+  font-size: 0.72rem;
   color: var(--text-muted);
+  gap: 0.25rem;
+  white-space: nowrap;
 }
+

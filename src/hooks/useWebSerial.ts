@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useAppStore } from '../store/useAppStore';
 import { OptiMeshSerial } from '../utils/optimesh-serial';
-import type { ChannelMap } from '../utils/optimesh-serial';
+import type { FaultUpdatePayload } from '../utils/optimesh-serial';
 import type { SensorData, RawData, PerChannelData, ZoneStatus } from '../types';
 
 export function useWebSerial() {
@@ -9,39 +9,68 @@ export function useWebSerial() {
   const [isConnected, setIsConnected] = useState(false);
   const serialRef = useRef<OptiMeshSerial | null>(null);
 
-  const handleGridUpdate = useCallback((channelMap: ChannelMap) => {
+  const handleFaultUpdate = useCallback((payload: FaultUpdatePayload | any) => {
     const raw: RawData = {};
     const perChannel: PerChannelData = {};
     const brokenChannels: string[] = [];
     const zoneStatus: ZoneStatus = {};
     const timestampMs = Date.now();
 
-    Object.entries(channelMap).forEach(([studioNumStr, entry]) => {
-      const studioNum = parseInt(studioNumStr, 10);
-      const channelId = `X${studioNum}`;
-      const status = entry.fault ? 'BROKEN' : 'OK';
-
-      raw[channelId] = entry.value;
-      perChannel[channelId] = status;
-
-      if (entry.fault) {
-        brokenChannels.push(channelId);
-
-        const region = calibrationMap[channelId]?.region || gloveCalibrationMap[channelId]?.region;
-        if (region) {
-          zoneStatus[region] = 'BROKEN';
+    if (payload && payload.readings) {
+      // 10x6 payload shape
+      const { readings, rowFaults, colFaults } = payload as FaultUpdatePayload;
+      
+      Object.entries(readings).forEach(([key, value]) => {
+        raw[key] = value;
+        const isFaulted = (rowFaults && rowFaults.has(key)) || 
+                          (colFaults && colFaults.has(key)) || 
+                          value < 59;
+        
+        perChannel[key] = isFaulted ? 'BROKEN' : 'OK';
+        if (isFaulted) {
+          brokenChannels.push(key);
+          const region = calibrationMap[key]?.region || gloveCalibrationMap[key]?.region;
+          if (region) {
+            zoneStatus[region] = 'BROKEN';
+          }
+          addEventLogEntry({
+            id: `evt-${timestampMs}-${key}`,
+            timestamp: timestampMs,
+            channelId: key,
+            reading: value,
+            region: (region ? region : 'left_glove') as any,
+            status: 'BROKEN'
+          });
         }
+      });
+    } else if (payload && typeof payload === 'object') {
+      // ChannelMap fallback
+      Object.entries(payload).forEach(([studioNumStr, entry]: [string, any]) => {
+        const studioNum = parseInt(studioNumStr, 10);
+        const channelId = `X${studioNum}`;
+        const status = entry?.fault ? 'BROKEN' : 'OK';
+        const val = entry?.value ?? 0;
 
-        addEventLogEntry({
-          id: `evt-${timestampMs}-${channelId}`,
-          timestamp: timestampMs,
-          channelId,
-          reading: entry.value,
-          region: (region ? 'left_arm' : 'left_arm') as any,
-          status: 'BROKEN'
-        });
-      }
-    });
+        raw[channelId] = val;
+        perChannel[channelId] = status;
+
+        if (entry?.fault) {
+          brokenChannels.push(channelId);
+          const region = calibrationMap[channelId]?.region || gloveCalibrationMap[channelId]?.region;
+          if (region) {
+            zoneStatus[region] = 'BROKEN';
+          }
+          addEventLogEntry({
+            id: `evt-${timestampMs}-${channelId}`,
+            timestamp: timestampMs,
+            channelId,
+            reading: val,
+            region: (region ? region : 'left_arm') as any,
+            status: 'BROKEN'
+          });
+        }
+      });
+    }
 
     const sensorData: SensorData = {
       timestamp: timestampMs,
@@ -57,7 +86,7 @@ export function useWebSerial() {
 
   const connectSerial = useCallback(async (baudRate = 115200) => {
     if (!serialRef.current) {
-      serialRef.current = new OptiMeshSerial(handleGridUpdate, (connected) => {
+      serialRef.current = new OptiMeshSerial(handleFaultUpdate, (connected) => {
         setIsConnected(connected);
         if (connected) {
           setConnectionState('LIVE');
@@ -66,7 +95,7 @@ export function useWebSerial() {
         }
       });
     } else {
-      serialRef.current.setGridUpdateCallback(handleGridUpdate);
+      serialRef.current.setFaultUpdateCallback(handleFaultUpdate);
     }
 
     try {
@@ -77,7 +106,7 @@ export function useWebSerial() {
       setConnectionState('DISCONNECTED');
       return false;
     }
-  }, [handleGridUpdate, setConnectionState]);
+  }, [handleFaultUpdate, setConnectionState]);
 
   const disconnectSerial = useCallback(async () => {
     if (serialRef.current) {

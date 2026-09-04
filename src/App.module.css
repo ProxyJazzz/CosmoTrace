@@ -15,15 +15,38 @@
 }
 
 .leftSidebar {
-  flex: 0 0 300px;
+  flex: 0 0 380px;
+  min-width: 340px;
+  max-width: 420px;
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1.25rem;
   overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 4px;
+}
+
+.leftSidebar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.leftSidebar::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 3px;
+}
+
+.leftSidebar::-webkit-scrollbar-thumb {
+  background: rgba(0, 240, 255, 0.2);
+  border-radius: 3px;
+}
+
+.leftSidebar::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 240, 255, 0.4);
 }
 
 .centerView {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   border-radius: 8px;
@@ -33,7 +56,8 @@
 }
 
 .rightSidebar {
-  flex: 0 0 350px;
+  flex: 0 0 380px;
+  min-width: 340px;
   display: flex;
   flex-direction: column;
   overflow-y: hidden; /* SensorGrid handles its own scroll */

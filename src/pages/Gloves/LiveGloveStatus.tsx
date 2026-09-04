@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   ArrowLeft, 
@@ -13,12 +13,18 @@ import {
   RotateCcw,
   Zap,
   Info,
-  Crosshair
+  Crosshair,
+  Volume2,
+  VolumeX,
+  Square,
+  Layers,
+  CheckSquare
 } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
-import { OptiMeshSerial } from '../../utils/optimesh-serial';
-import type { ChannelMap } from '../../utils/optimesh-serial';
-import type { GloveCalibrationMap, GloveRegion, GloveHand, GloveFinger, RawData, PerChannelData, ZoneStatus, SensorData } from '../../types';
+import { OptiMeshSerial, FAULT_THRESHOLD_PERCENT } from '../../utils/optimesh_10x6_simulated_new';
+import type { FaultUpdatePayload } from '../../utils/optimesh_10x6_simulated_new';
+import { emergencyAudio } from '../../utils/emergencyAudio';
+import type { GloveCalibrationMap, GloveRegion, GloveHand, GloveFinger } from '../../types';
 import styles from './LiveGloveStatus.module.css';
 
 // Zone definitions for Left and Right hands
@@ -52,11 +58,17 @@ const GLOVE_ZONES: Record<GloveHand, ZoneDef[]> = {
   ]
 };
 
+// 10 Horizontal Rows: 1 through 10
+export const HORIZ_NUMBERS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const;
+export type HorizNumber = typeof HORIZ_NUMBERS[number];
+
+// 6 Vertical Columns: A through F
+export const VERT_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'] as const;
+export type VertLetter = typeof VERT_LETTERS[number];
+
 export interface SelectedIntersection {
-  xNum: number; // 1..24 (Knuckles to Elbow)
-  yNum: number; // 1..20 (1..10 = Front, 11..20 = Back)
-  xId: string;  // e.g. "X2"
-  yId: string;  // e.g. "Y20"
+  colLetter: VertLetter; // A..F
+  rowNum: HorizNumber;   // 1..10
   aspect: 'front' | 'back';
 }
 
@@ -65,130 +77,398 @@ export const LiveGloveStatus: React.FC = () => {
     gloveCalibrationMap, 
     setGloveCalibrationMap, 
     sensorData, 
-    setSensorData,
     connectionState,
-    setConnectionState,
-    addEventLogEntry
+    setConnectionState
   } = useAppStore();
 
   const [activeHand, setActiveHand] = useState<GloveHand>('left');
-  const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
+  
+  // Multi-wire selection state: list of wire IDs e.g. ['L-1', 'L-3', 'L-A', 'L-C']
+  const [selectedWireIds, setSelectedWireIds] = useState<string[]>([]);
   const [selectedIntersection, setSelectedIntersection] = useState<SelectedIntersection | null>(null);
   const [selectedZone, setSelectedZone] = useState<GloveRegion | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isConnecting, setIsConnecting] = useState(false);
   const [simulatedFaults, setSimulatedFaults] = useState<Record<string, boolean>>({});
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [channelFilter, setChannelFilter] = useState<'ALL' | 'X_WIRES' | 'Y_FRONT' | 'Y_BACK' | 'FAULTS'>('ALL');
+  const [channelFilter, setChannelFilter] = useState<'ALL' | 'HORIZ' | 'VERT' | 'FAULTS'>('ALL');
 
-  // Parser: Checks if search query is an intersection like "x2,y20", "X2, Y20", "X2 Y20", "x2-y20", "(x2, y20)"
-  const parsedSearchIntersection = useMemo<SelectedIntersection | null>(() => {
-    if (!searchQuery) return null;
+  // Live Serial Capacity Readings (0-100%) and Fault Sets from ESP32
+  const [liveReadings, setLiveReadings] = useState<Record<string, number>>({});
+  const [serialFaults, setSerialFaults] = useState<Set<string>>(new Set());
+  const [serialPointFaults, setSerialPointFaults] = useState<Set<string>>(new Set());
+
+  // 1m 30s Emergency Simulation State & Sound
+  const [emergencyTimer, setEmergencyTimer] = useState<number | null>(null);
+  const [isMuted, setIsMuted] = useState(false);
+
+  const prefix = activeHand === 'left' ? 'L' : 'R';
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // Helper to get capacity reading for any wire
+  const getWireReading = (wireTag: string): number | null => {
+    const clean = wireTag.replace(/^[^-]+-/, '');
+    const val = liveReadings[clean] ?? 
+                liveReadings[`Row ${clean}`] ?? 
+                liveReadings[`Col ${clean}`] ?? 
+                liveReadings[`R${clean}`] ?? 
+                liveReadings[`C${clean}`];
+    return typeof val === 'number' ? val : null;
+  };
+
+  // Helper to check if a specific channel or wire is faulted (< 59% reading or explicitly faulted)
+  const isChannelFaulted = (channelId: string): boolean => {
+    if (simulatedFaults[channelId]) return true;
+    if (serialFaults.has(channelId)) return true;
+
+    const wireTag = channelId.replace(/^[^-]+-/, '');
+    if (serialFaults.has(wireTag) || serialFaults.has(`Row ${wireTag}`) || serialFaults.has(`Col ${wireTag}`)) {
+      return true;
+    }
+
+    // Check reading < 59%
+    const reading = getWireReading(wireTag);
+    if (reading !== null && reading < FAULT_THRESHOLD_PERCENT) {
+      return true;
+    }
+
+    if (sensorData?.perChannel && sensorData.perChannel[channelId] === 'BROKEN') return true;
+    if (sensorData?.brokenChannels?.includes(channelId)) return true;
+
+    // Check if any intersection fault touches this wire
+    const handPrefix = activeHand === 'left' ? 'L' : 'R';
+    if (channelId.startsWith(handPrefix)) {
+      // Horizontal wire check (e.g. L-1..L-10)
+      const hMatch = channelId.match(/^[LR]-(\d+)$/);
+      if (hMatch) {
+        const row = parseInt(hMatch[1], 10);
+        for (const col of VERT_LETTERS) {
+          if (simulatedFaults[`INT-${handPrefix}-${col}-${row}`] || 
+              serialPointFaults.has(`${col}${row}`) || 
+              serialPointFaults.has(`INT-${col}-${row}`)) {
+            return true;
+          }
+        }
+      }
+
+      // Vertical wire check (e.g. L-A..L-F)
+      const vMatch = channelId.match(/^[LR]-([A-F])$/);
+      if (vMatch) {
+        const col = vMatch[1];
+        for (let row = 1; row <= 10; row++) {
+          if (simulatedFaults[`INT-${handPrefix}-${col}-${row}`] || 
+              serialPointFaults.has(`${col}${row}`) || 
+              serialPointFaults.has(`INT-${col}-${row}`)) {
+            return true;
+          }
+        }
+      }
+
+      // Finger wire aliases
+      const fingerMatch = channelId.match(/^[LR]-Y-(TH|IF|MF|RF|LF)$/);
+      if (fingerMatch) {
+        const fingerMap: Record<string, string> = { 'TH': 'A', 'IF': 'B', 'MF': 'C', 'RF': 'D', 'LF': 'E' };
+        const col = fingerMap[fingerMatch[1]];
+        if (col) {
+          for (let row = 1; row <= 10; row++) {
+            if (simulatedFaults[`INT-${handPrefix}-${col}-${row}`] || 
+                serialPointFaults.has(`${col}${row}`)) {
+              return true;
+            }
+          }
+        }
+      }
+    }
+
+    return false;
+  };
+
+  // Helper to check if an intersection (Col Letter, Row Num) is faulted
+  const isIntersectionFaulted = (colLetter: string, rowNum: number): boolean => {
+    const handPrefix = activeHand === 'left' ? 'L' : 'R';
+    const junctionKey = `INT-${handPrefix}-${colLetter}-${rowNum}`;
+    if (simulatedFaults[junctionKey]) return true;
+    if (serialPointFaults.has(`${colLetter}${rowNum}`) || serialPointFaults.has(`INT-${colLetter}-${rowNum}`)) return true;
+    if (isChannelFaulted(`${handPrefix}-${colLetter}`) || isChannelFaulted(`${handPrefix}-${rowNum}`)) return true;
+    return false;
+  };
+
+  // Channels list for active hand
+  const channels = useMemo(() => {
+    return Object.values(gloveCalibrationMap).sort((a, b) => {
+      const aIsHoriz = /\d+$/.test(a.id);
+      const bIsHoriz = /\d+$/.test(b.id);
+      if (aIsHoriz && !bIsHoriz) return -1;
+      if (!aIsHoriz && bIsHoriz) return 1;
+      return a.id.localeCompare(b.id, undefined, { numeric: true });
+    });
+  }, [gloveCalibrationMap]);
+
+  // Check if a specific glove region has any broken channel
+  const isZoneFaulted = (region: GloveRegion): boolean => {
+    return channels.some(c => c.region === region && isChannelFaulted(c.id));
+  };
+
+  // List of all currently faulted channel IDs
+  const allFaultedWires = useMemo(() => {
+    return channels.filter(c => c.hand === activeHand && isChannelFaulted(c.id)).map(c => c.id);
+  }, [channels, activeHand, simulatedFaults, serialFaults, liveReadings, sensorData]);
+
+  // Start Emergency Alarm when 1 or more faults are detected/simulated
+  const triggerAlarm = () => {
+    if (emergencyTimer === null || emergencyTimer <= 0) {
+      setEmergencyTimer(90);
+    }
+    emergencyAudio.setMuted(isMuted);
+    emergencyAudio.startAlarmLoop();
+  };
+
+  // Stop Emergency Alarm
+  const stopEmergencySimulation = () => {
+    setSimulatedFaults({});
+    setSerialFaults(new Set());
+    setSerialPointFaults(new Set());
+    setSelectedIntersection(null);
+    setSelectedWireIds([]);
+    setEmergencyTimer(null);
+    emergencyAudio.stopAlarmLoop();
+  };
+
+  const toggleMute = () => {
+    const nextMute = !isMuted;
+    setIsMuted(nextMute);
+    emergencyAudio.setMuted(nextMute);
+  };
+
+  // Timer interval effect
+  useEffect(() => {
+    if (emergencyTimer === null) return;
+
+    if (emergencyTimer <= 0) {
+      emergencyAudio.playExpiredChime();
+      return;
+    }
+
+    const timer = setInterval(() => {
+      setEmergencyTimer(prev => {
+        if (prev === null || prev <= 1) {
+          clearInterval(timer);
+          emergencyAudio.playExpiredChime();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [emergencyTimer]);
+
+  // Cleanup audio loop on unmount
+  useEffect(() => {
+    return () => {
+      emergencyAudio.stopAlarmLoop();
+    };
+  }, []);
+
+  // Multi-wire selection management
+  const isWireSelected = (wireId: string): boolean => {
+    return selectedWireIds.includes(wireId);
+  };
+
+  const toggleSelectWire = (wireId: string) => {
+    setSelectedWireIds(prev => {
+      if (prev.includes(wireId)) {
+        return prev.filter(id => id !== wireId);
+      } else {
+        return [...prev, wireId];
+      }
+    });
+  };
+
+  const selectWires = (wireIds: string[]) => {
+    setSelectedWireIds(wireIds);
+  };
+
+  const clearWireSelection = () => {
+    setSelectedWireIds([]);
+    setSelectedIntersection(null);
+  };
+
+  // Toggle fault for a single wire
+  const toggleWireFault = (wireId: string) => {
+    setSimulatedFaults(prev => {
+      const next = { ...prev };
+      if (next[wireId]) {
+        delete next[wireId];
+      } else {
+        next[wireId] = true;
+      }
+      return next;
+    });
+
+    const isCurrentlyFaulted = isChannelFaulted(wireId);
+    if (!isCurrentlyFaulted) {
+      triggerAlarm();
+    }
+  };
+
+  // Fault all currently selected wires
+  const faultSelectedWires = () => {
+    if (selectedWireIds.length === 0) return;
+    setSimulatedFaults(prev => {
+      const next = { ...prev };
+      selectedWireIds.forEach(id => {
+        next[id] = true;
+      });
+      return next;
+    });
+    triggerAlarm();
+  };
+
+  // Clear fault for all currently selected wires
+  const clearFaultOnSelectedWires = () => {
+    if (selectedWireIds.length === 0) return;
+    setSimulatedFaults(prev => {
+      const next = { ...prev };
+      selectedWireIds.forEach(id => {
+        delete next[id];
+      });
+      return next;
+    });
+  };
+
+  // Toggle intersection fault (also selects the intersection & both wires)
+  const toggleIntersectionFault = (colLetter: VertLetter, rowNum: HorizNumber, aspect: 'front' | 'back') => {
+    const junctionKey = `INT-${prefix}-${colLetter}-${rowNum}`;
+    const isCurrentlyFaulted = isIntersectionFaulted(colLetter, rowNum);
+
+    if (!isCurrentlyFaulted) {
+      setSimulatedFaults(prev => ({ ...prev, [junctionKey]: true }));
+      setSelectedIntersection({ colLetter, rowNum, aspect });
+      const colId = `${prefix}-${colLetter}`;
+      const rowId = `${prefix}-${rowNum}`;
+      setSelectedWireIds(prev => Array.from(new Set([...prev, colId, rowId])));
+      triggerAlarm();
+    } else {
+      setSimulatedFaults(prev => {
+        const next = { ...prev };
+        delete next[junctionKey];
+        delete next[`${prefix}-${colLetter}`];
+        delete next[`${prefix}-${rowNum}`];
+        return next;
+      });
+    }
+  };
+
+  // Parser: Supports searching for single wire ("A", "3"), multiple wires ("A, C, 4"), or intersection ("A4", "A, 4")
+  useEffect(() => {
+    if (!searchQuery) return;
     const q = searchQuery.trim().toUpperCase();
 
-    // Pattern 1: X<num> [,/ -] Y<num>
-    const matchXY = q.match(/X\s*(\d{1,2})\s*[,/\s\-]+\s*Y\s*(\d{1,2})/);
-    if (matchXY) {
-      const xNum = parseInt(matchXY[1], 10);
-      const yNum = parseInt(matchXY[2], 10);
-      if (xNum >= 1 && xNum <= 24 && yNum >= 1 && yNum <= 20) {
-        return {
-          xNum,
-          yNum,
-          xId: `X${xNum}`,
-          yId: `Y${yNum}`,
-          aspect: yNum <= 10 ? 'front' : 'back'
-        };
+    const matchColRow = q.match(/^[\(]?\s*([A-F])\s*[,/\s\-]+\s*(\d{1,2})\s*[\)]?$/) ||
+                        q.match(/^[\(]?\s*([A-F])(\d{1,2})\s*[\)]?$/);
+    if (matchColRow) {
+      const colLetter = matchColRow[1] as VertLetter;
+      const rowNum = parseInt(matchColRow[2], 10) as HorizNumber;
+      if (VERT_LETTERS.includes(colLetter) && rowNum >= 1 && rowNum <= 10) {
+        setSelectedIntersection({ colLetter, rowNum, aspect: 'front' });
+        setSelectedWireIds([`${prefix}-${colLetter}`, `${prefix}-${rowNum}`]);
+        return;
       }
     }
 
-    // Pattern 2: Y<num> [,/ -] X<num>
-    const matchYX = q.match(/Y\s*(\d{1,2})\s*[,/\s\-]+\s*X\s*(\d{1,2})/);
-    if (matchYX) {
-      const yNum = parseInt(matchYX[1], 10);
-      const xNum = parseInt(matchYX[2], 10);
-      if (xNum >= 1 && xNum <= 24 && yNum >= 1 && yNum <= 20) {
-        return {
-          xNum,
-          yNum,
-          xId: `X${xNum}`,
-          yId: `Y${yNum}`,
-          aspect: yNum <= 10 ? 'front' : 'back'
-        };
+    const matchRowCol = q.match(/^[\(]?\s*(\d{1,2})\s*[,/\s\-]+\s*([A-F])\s*[\)]?$/) ||
+                        q.match(/^[\(]?\s*(\d{1,2})([A-F])\s*[\)]?$/);
+    if (matchRowCol) {
+      const rowNum = parseInt(matchRowCol[1], 10) as HorizNumber;
+      const colLetter = matchRowCol[2] as VertLetter;
+      if (VERT_LETTERS.includes(colLetter) && rowNum >= 1 && rowNum <= 10) {
+        setSelectedIntersection({ colLetter, rowNum, aspect: 'front' });
+        setSelectedWireIds([`${prefix}-${colLetter}`, `${prefix}-${rowNum}`]);
+        return;
       }
     }
 
-    // Pattern 3: (2, 20) or 2, 20
-    const matchNumPair = q.match(/^\(?\s*(\d{1,2})\s*[,/\s\-]+\s*(\d{1,2})\s*\)?$/);
-    if (matchNumPair) {
-      const xNum = parseInt(matchNumPair[1], 10);
-      const yNum = parseInt(matchNumPair[2], 10);
-      if (xNum >= 1 && xNum <= 24 && yNum >= 1 && yNum <= 20) {
-        return {
-          xNum,
-          yNum,
-          xId: `X${xNum}`,
-          yId: `Y${yNum}`,
-          aspect: yNum <= 10 ? 'front' : 'back'
-        };
+    const tokens = q.split(/[,;\s]+/).map(t => t.replace(/^(WIRE|ROW|COL|X|Y)-?/i, '').trim()).filter(Boolean);
+    const matchedWireIds: string[] = [];
+
+    tokens.forEach(tok => {
+      if (VERT_LETTERS.includes(tok as any)) {
+        matchedWireIds.push(`${prefix}-${tok}`);
+      } else {
+        const num = parseInt(tok, 10);
+        if (!isNaN(num) && num >= 1 && num <= 10) {
+          matchedWireIds.push(`${prefix}-${num}`);
+        }
       }
+    });
+
+    if (matchedWireIds.length > 0) {
+      setSelectedWireIds(matchedWireIds);
+      setSelectedIntersection(null);
     }
+  }, [searchQuery, prefix]);
 
-    return null;
-  }, [searchQuery]);
+  // OptiMesh Serial Connection Setup with onFaultUpdate matching { readings, rowFaults, colFaults, pointFaults }
+  const bridge = useMemo(() => {
+    const onFaultUpdate = (payload: FaultUpdatePayload) => {
+      const { readings, rowFaults, colFaults, pointFaults } = payload;
+      setLiveReadings(readings);
+      setSerialPointFaults(pointFaults);
 
-  // Synchronize search intersection with selectedIntersection
-  React.useEffect(() => {
-    if (parsedSearchIntersection) {
-      setSelectedIntersection(parsedSearchIntersection);
-      setSelectedChannelId(null);
-    }
-  }, [parsedSearchIntersection]);
+      const newFaultedSet = new Set<string>();
+      const activePrefix = activeHand === 'left' ? 'L' : 'R';
 
-  // Instantiated OptiMeshSerial bridge with onGridUpdate (v2 channelMap: 1-120) and onStatus handlers
-  const bridge = React.useMemo(() => {
-    const onGridUpdate = (channelMap: ChannelMap) => {
-      const raw: RawData = {};
-      const perChannel: PerChannelData = {};
-      const brokenChannels: string[] = [];
-      const zoneStatus: ZoneStatus = {};
-      const timestampMs = Date.now();
-
-      Object.entries(channelMap).forEach(([studioNumStr, entry]) => {
-        const studioNum = parseInt(studioNumStr, 10);
-        const channelId = `X${studioNum}`; // Studio channel key e.g. X1..X120
-
-        raw[channelId] = entry.value;
-        perChannel[channelId] = entry.fault ? 'BROKEN' : 'OK';
-
-        if (entry.fault) {
-          brokenChannels.push(channelId);
-
-          const region = gloveCalibrationMap[channelId]?.region;
-          if (region) {
-            zoneStatus[region] = 'BROKEN';
-          }
-
-          addEventLogEntry({
-            id: `evt-${timestampMs}-${channelId}`,
-            timestamp: timestampMs,
-            channelId,
-            reading: entry.value,
-            region: (region ? region : 'left_glove') as any,
-            status: 'BROKEN'
-          });
+      // Process row faults (e.g. "Row 8", "8")
+      rowFaults.forEach(rf => {
+        const rowNum = rf.replace(/^(?:Row\s*|R)/i, '');
+        if (/^\d+$/.test(rowNum)) {
+          newFaultedSet.add(`${activePrefix}-${rowNum}`);
+          newFaultedSet.add(rf);
+          newFaultedSet.add(rowNum);
         }
       });
 
-      const updatedSensorData: SensorData = {
-        timestamp: timestampMs,
-        raw,
-        perChannel,
-        zoneStatus,
-        brokenChannels
-      };
+      // Process col faults (e.g. "Col D", "D")
+      colFaults.forEach(cf => {
+        const colLetter = cf.replace(/^(?:Col\s*|C)/i, '').toUpperCase();
+        if (/^[A-F]$/.test(colLetter)) {
+          newFaultedSet.add(`${activePrefix}-${colLetter}`);
+          newFaultedSet.add(cf);
+          newFaultedSet.add(colLetter);
+        }
+      });
 
-      setSensorData(updatedSensorData);
+      // Also flag any reading whose capacity goes below 59%
+      Object.entries(readings).forEach(([key, val]) => {
+        if (typeof val === 'number' && val < FAULT_THRESHOLD_PERCENT) {
+          const rowMatch = key.match(/^(?:R|Row\s*)?(\d+)$/i);
+          if (rowMatch && parseInt(rowMatch[1], 10) >= 1 && parseInt(rowMatch[1], 10) <= 10) {
+            newFaultedSet.add(`${activePrefix}-${rowMatch[1]}`);
+            newFaultedSet.add(`Row ${rowMatch[1]}`);
+            newFaultedSet.add(rowMatch[1]);
+          }
+          const colMatch = key.match(/^(?:C|Col\s*)?([A-F])$/i);
+          if (colMatch) {
+            const letter = colMatch[1].toUpperCase();
+            newFaultedSet.add(`${activePrefix}-${letter}`);
+            newFaultedSet.add(`Col ${letter}`);
+            newFaultedSet.add(letter);
+          }
+        }
+      });
+
+      setSerialFaults(newFaultedSet);
+
+      if (newFaultedSet.size > 0) {
+        triggerAlarm();
+      }
+
       setConnectionState('LIVE');
     };
 
@@ -204,33 +484,30 @@ export const LiveGloveStatus: React.FC = () => {
       }
     };
 
-    return new OptiMeshSerial(onGridUpdate, onStatus);
-  }, [gloveCalibrationMap, setSensorData, setConnectionState, addEventLogEntry]);
+    return new OptiMeshSerial(onFaultUpdate, onStatus);
+  }, [activeHand, setConnectionState]);
 
   // Clean up serial port connection on unmount
-  React.useEffect(() => {
+  useEffect(() => {
     return () => {
       bridge.disconnect();
     };
   }, [bridge]);
 
-  // Real connection implementation using bridge.connect(115200)
   const connectToESP32 = async () => {
     setIsConnecting(true);
     setErrorMessage(null);
-
     try {
       await bridge.connect(115200);
     } catch (err: any) {
       console.error('[LiveGloveStatus] Serial connection failed:', err);
-      const msg = err?.message || 'Failed to open Web Serial port or browser context does not support Web Serial.';
+      const msg = err?.message || 'Failed to open Web Serial port.';
       setErrorMessage(msg);
     } finally {
       setIsConnecting(false);
     }
   };
 
-  // Handle Import of freshly exported Calibration JSON
   const handleImportCalibration = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -240,13 +517,8 @@ export const LiveGloveStatus: React.FC = () => {
       try {
         const json = JSON.parse(event.target?.result as string) as GloveCalibrationMap;
         if (typeof json === 'object' && json !== null) {
-          const firstKey = Object.keys(json)[0];
-          if (firstKey && json[firstKey].hand && json[firstKey].finger) {
-            setGloveCalibrationMap(json);
-            alert(`Loaded calibration map containing ${Object.keys(json).length} channels.`);
-          } else {
-            alert('Invalid glove calibration schema format.');
-          }
+          setGloveCalibrationMap(json);
+          alert(`Loaded calibration map containing ${Object.keys(json).length} channels.`);
         }
       } catch (err) {
         alert('Failed to parse JSON file.');
@@ -256,121 +528,164 @@ export const LiveGloveStatus: React.FC = () => {
     e.target.value = '';
   };
 
-  // Mapping channels and fault states
-  const channels = useMemo(() => {
-    return Object.values(gloveCalibrationMap).sort((a, b) => {
-      const aNum = parseInt(a.id.replace(/\D/g, '')) || 0;
-      const bNum = parseInt(b.id.replace(/\D/g, '')) || 0;
-      return aNum - bNum;
-    });
-  }, [gloveCalibrationMap]);
-
-  // Check if a specific channel is faulted
-  const isChannelFaulted = (channelId: string): boolean => {
-    if (simulatedFaults[channelId]) return true;
-    if (sensorData?.perChannel && sensorData.perChannel[channelId] === 'BROKEN') return true;
-    if (sensorData?.brokenChannels?.includes(channelId)) return true;
-    return false;
-  };
-
-  // Check if a specific intersection is faulted
-  const isIntersectionFaulted = (xNum: number, yNum: number): boolean => {
-    const prefix = activeHand === 'left' ? 'L' : 'R';
-    const junctionKey = `INT-${prefix}-X${xNum}-Y${yNum}`;
-    if (simulatedFaults[junctionKey]) return true;
-    if (isChannelFaulted(`${prefix}-X${xNum}`) || isChannelFaulted(`${prefix}-Y${yNum}`)) return true;
-    return false;
-  };
-
-  // Toggle intersection fault simulation
-  const toggleIntersectionFault = (xNum: number, yNum: number) => {
-    const prefix = activeHand === 'left' ? 'L' : 'R';
-    const junctionKey = `INT-${prefix}-X${xNum}-Y${yNum}`;
-    setSimulatedFaults(prev => ({
-      ...prev,
-      [junctionKey]: !prev[junctionKey]
-    }));
-  };
-
-  // Check if a specific glove region has any broken channel
-  const isZoneFaulted = (region: GloveRegion): boolean => {
-    return channels.some(c => c.region === region && isChannelFaulted(c.id));
-  };
-
   // KPI Calculations
   const stats = useMemo(() => {
     const handChannels = channels.filter(c => c.hand === activeHand);
-    const total = handChannels.length;
+    const total = handChannels.length || 16;
     let faulted = 0;
     handChannels.forEach(c => {
       if (isChannelFaulted(c.id)) faulted++;
     });
-    const healthy = total - faulted;
-    const integrityPct = total > 0 ? Math.round((healthy / total) * 100) : 100;
 
-    return { total, faulted, healthy, integrityPct };
-  }, [channels, activeHand, sensorData, simulatedFaults]);
+    const activeIntersections = Object.keys(simulatedFaults).filter(
+      k => k.startsWith(`INT-${prefix}-`) && simulatedFaults[k]
+    );
+    if (activeIntersections.length > 0 && faulted === 0) {
+      faulted = activeIntersections.length;
+    }
 
-  // Toggle simulation fault for testing UI
-  const toggleFault = (channelId: string) => {
-    setSimulatedFaults(prev => ({
-      ...prev,
-      [channelId]: !prev[channelId]
-    }));
+    const healthy = Math.max(0, total - faulted);
+    const integrityPct = total > 0 ? Math.max(0, Math.round(((total - faulted) / total) * 100)) : 100;
+    const isBreached = faulted > 0 || emergencyTimer !== null;
+    const statusText = !isBreached ? 'NOMINAL' : 'DANGER';
+
+    return { total, faulted, healthy, integrityPct, isBreached, statusText };
+  }, [channels, activeHand, prefix, sensorData, simulatedFaults, serialFaults, liveReadings, emergencyTimer]);
+
+  // Simulate test fault with readings dropping below 59%
+  const triggerThresholdFaults = () => {
+    const mockReadings: Record<string, number> = {};
+    for (let r = 1; r <= 10; r++) {
+      mockReadings[`Row ${r}`] = Math.floor(Math.random() * 30) + 70; // healthy 70-100%
+    }
+    for (const c of VERT_LETTERS) {
+      mockReadings[`Col ${c}`] = Math.floor(Math.random() * 30) + 70; // healthy 70-100%
+    }
+
+    // Drop 2 random wires below 59% (e.g. 25-45%)
+    const faultRow = Math.floor(Math.random() * 10) + 1;
+    const faultCol = VERT_LETTERS[Math.floor(Math.random() * VERT_LETTERS.length)];
+    mockReadings[`Row ${faultRow}`] = Math.floor(Math.random() * 30) + 20; // 20-50%
+    mockReadings[`Col ${faultCol}`] = Math.floor(Math.random() * 30) + 20; // 20-50%
+
+    setLiveReadings(mockReadings);
+
+    const nextFaults: Record<string, boolean> = {};
+    nextFaults[`${prefix}-${faultRow}`] = true;
+    nextFaults[`${prefix}-${faultCol}`] = true;
+    setSimulatedFaults(nextFaults);
+
+    triggerAlarm();
   };
 
   const clearAllFaults = () => {
     setSimulatedFaults({});
+    setSerialFaults(new Set());
+    setSerialPointFaults(new Set());
+    setLiveReadings({});
+    setEmergencyTimer(null);
+    emergencyAudio.stopAlarmLoop();
   };
 
-  const triggerRandomFaults = () => {
-    const next: Record<string, boolean> = {};
-    const handChannels = channels.filter(c => c.hand === activeHand);
-    handChannels.forEach(c => {
-      if (Math.random() < 0.2) {
-        next[c.id] = true;
-      }
-    });
-    // Add random intersection faults
-    for (let i = 1; i <= 6; i++) {
-      const rx = Math.floor(Math.random() * 24) + 1;
-      const ry = Math.floor(Math.random() * 20) + 1;
-      const prefix = activeHand === 'left' ? 'L' : 'R';
-      next[`INT-${prefix}-X${rx}-Y${ry}`] = true;
-    }
-    setSimulatedFaults(next);
-  };
-
-  // Filtered channel list for sidebar
+  // Filtered channels list for sidebar
   const filteredChannels = useMemo(() => {
     return channels.filter(c => {
       if (c.hand !== activeHand) return false;
       if (selectedZone && c.region !== selectedZone) return false;
-      if (channelFilter === 'X_WIRES' && !c.id.includes('-X')) return false;
-      if (channelFilter === 'Y_FRONT') {
-        const yNum = parseInt(c.id.replace(/^[^-]+-Y(\d+)$/, '$1'), 10);
-        if (isNaN(yNum) || yNum > 10) return false;
-      }
-      if (channelFilter === 'Y_BACK') {
-        const yNum = parseInt(c.id.replace(/^[^-]+-Y(\d+)$/, '$1'), 10);
-        if (isNaN(yNum) || yNum < 11 || yNum > 20) return false;
-      }
+      const isHoriz = /\d+$/.test(c.id);
+      if (channelFilter === 'HORIZ' && !isHoriz) return false;
+      if (channelFilter === 'VERT' && isHoriz) return false;
       if (channelFilter === 'FAULTS' && !isChannelFaulted(c.id)) return false;
-      if (searchQuery && !parsedSearchIntersection) {
+      if (searchQuery && !selectedIntersection) {
         const query = searchQuery.toLowerCase();
         return c.id.toLowerCase().includes(query) || 
                c.label.toLowerCase().includes(query) || 
-               c.region.toLowerCase().includes(query) ||
-               c.fibreId.toLowerCase().includes(query);
+               c.region.toLowerCase().includes(query);
       }
       return true;
     });
-  }, [channels, activeHand, selectedZone, channelFilter, searchQuery, parsedSearchIntersection, simulatedFaults, sensorData]);
+  }, [channels, activeHand, selectedZone, channelFilter, searchQuery, selectedIntersection, simulatedFaults, serialFaults, liveReadings, sensorData]);
 
-  const selectedSensor = selectedChannelId ? gloveCalibrationMap[selectedChannelId] : null;
+  // Break down selected wires into Horizontal and Vertical
+  const selectedHorizWires = useMemo(() => {
+    return selectedWireIds
+      .filter(id => id.startsWith(prefix) && /\d+$/.test(id))
+      .map(id => parseInt(id.replace(/^[^-]+-/, ''), 10))
+      .sort((a, b) => a - b);
+  }, [selectedWireIds, prefix]);
+
+  const selectedVertWires = useMemo(() => {
+    return selectedWireIds
+      .filter(id => id.startsWith(prefix) && /[A-F]$/.test(id))
+      .map(id => id.replace(/^[^-]+-/, ''))
+      .sort();
+  }, [selectedWireIds, prefix]);
 
   return (
-    <div className={styles.container}>
+    <div className={`${styles.container} ${emergencyTimer !== null ? styles.emergencyMode : ''}`}>
+      {/* Emergency Countdown Banner */}
+      {emergencyTimer !== null && (
+        <div className={styles.emergencyBanner}>
+          <div className={styles.emergencyBannerLeft}>
+            <div className={styles.emergencyBadge}>
+              <AlertTriangle size={14} />
+              CONTAINMENT BREACH
+            </div>
+            <div className={styles.emergencyTitle}>
+              {allFaultedWires.length > 0 ? (
+                <span>
+                  BREACH DETECTED: FAULT ON WIRES <strong>[{allFaultedWires.map(w => {
+                    const tag = w.replace(/^[^-]+-/, '');
+                    const reading = getWireReading(tag);
+                    return reading !== null ? `${tag} (${reading}%)` : tag;
+                  }).join(', ')}]</strong> &bull; {stats.faulted} FAULTED WIRES (&lt; 59% CAPACITY)
+                </span>
+              ) : selectedIntersection ? (
+                <span>
+                  BREACH DETECTED: Intersection <strong>(Col {selectedIntersection.colLetter}, Row {selectedIntersection.rowNum})</strong>
+                </span>
+              ) : (
+                <span>BREACH DETECTED: ACTIVE FAULT MONITORED &bull; {stats.faulted} FAULTED WIRES</span>
+              )}
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+            <div className={styles.emergencyTimerWrap}>
+              <span className={styles.emergencyTimerLabel}>Timer:</span>
+              <span className={styles.emergencyTimerValue}>{formatTime(emergencyTimer)}</span>
+            </div>
+
+            <div className={styles.emergencyControls}>
+              <button 
+                className={styles.emergencyBtn}
+                onClick={toggleMute}
+                title={isMuted ? 'Unmute alert audio' : 'Mute alert audio'}
+              >
+                {isMuted ? <VolumeX size={14} /> : <Volume2 size={14} />}
+                {isMuted ? 'Unmuted' : 'Beeping'}
+              </button>
+
+              <button 
+                className={styles.emergencyBtnDanger}
+                onClick={stopEmergencySimulation}
+                title="Stop countdown and clear all simulated faults"
+              >
+                <Square size={13} fill="#c00c0c" />
+                Clear Faults / Stop
+              </button>
+            </div>
+          </div>
+
+          <div className={styles.emergencyProgressBar}>
+            <div 
+              className={styles.emergencyProgressFill} 
+              style={{ width: `${(emergencyTimer / 90) * 100}%` }}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Top Header */}
       <header className={styles.header}>
         <div className={styles.headerLeft}>
@@ -380,8 +695,8 @@ export const LiveGloveStatus: React.FC = () => {
           </Link>
           <div className={styles.title}>
             <Activity size={20} />
-            Live 2D Glove Status Monitor
-            <span className={styles.badge}>24 Horizontal &bull; 20 Vertical (10 Front / 10 Back) from Knuckles to Elbow</span>
+            Live 2D Status &bull; 10 Horizontal (Row 1&ndash;10) &times; 6 Vertical (Col A&ndash;F)
+            <span className={styles.badge}>Threshold: &lt; 59% Fault &bull; ESP32 Serial Ready</span>
           </div>
         </div>
 
@@ -408,7 +723,7 @@ export const LiveGloveStatus: React.FC = () => {
             disabled={isConnecting}
           >
             <Cpu size={16} />
-            {isConnecting ? 'Opening Port...' : 'Connect ESP32 (USB)'}
+            {isConnecting ? 'Opening Port...' : connectionState === 'LIVE' ? 'ESP32 Connected' : 'Connect ESP32 (USB)'}
           </button>
         </div>
       </header>
@@ -442,60 +757,60 @@ export const LiveGloveStatus: React.FC = () => {
       {/* KPI Stats Bar */}
       <div className={styles.kpiBar}>
         <div className={styles.kpiCard}>
-          <span className={styles.kpiLabel}>Monitored Glove</span>
+          <span className={styles.kpiLabel}>Monitored Hand</span>
           <span className={styles.kpiValue} style={{ textTransform: 'capitalize' }}>
-            {activeHand} Glove & Arm
+            {activeHand} Glove Matrix
           </span>
         </div>
         <div className={styles.kpiCard}>
-          <span className={styles.kpiLabel}>Mesh Matrix</span>
-          <span className={styles.kpiValue}>24 X &times; 20 Y (480 Junc)</span>
+          <span className={styles.kpiLabel}>Grid Architecture</span>
+          <span className={styles.kpiValue}>10 Horiz (1-10) &times; 6 Vert (A-F)</span>
         </div>
         <div className={styles.kpiCard}>
-          <span className={styles.kpiLabel}>Span</span>
-          <span className={styles.kpiValue}>Knuckles to Elbow</span>
+          <span className={styles.kpiLabel}>Fault Threshold</span>
+          <span className={styles.kpiValue} style={{ color: '#00f0ff' }}>&lt; 59% Light</span>
         </div>
         <div className={styles.kpiCard}>
-          <span className={styles.kpiLabel}>Faulted Channels</span>
+          <span className={styles.kpiLabel}>Faulted Wires</span>
           <span className={`${styles.kpiValue} ${stats.faulted > 0 ? styles.fault : styles.healthy}`}>
             {stats.faulted}
           </span>
         </div>
         <div className={styles.kpiCard}>
           <span className={styles.kpiLabel}>Integrity Index</span>
-          <span className={`${styles.kpiValue} ${stats.integrityPct < 90 ? styles.fault : styles.healthy}`}>
+          <span className={`${styles.kpiValue} ${stats.integrityPct < 100 ? (stats.integrityPct < 85 ? styles.fault : styles.warning) : styles.healthy}`}>
             {stats.integrityPct}%
           </span>
         </div>
         <div className={styles.kpiCard}>
-          <span className={styles.kpiLabel}>Status</span>
-          <span className={`${styles.kpiValue} ${stats.faulted === 0 ? styles.healthy : styles.fault}`}>
-            {stats.faulted === 0 ? 'NOMINAL' : 'ALERT'}
+          <span className={styles.kpiLabel}>Containment Status</span>
+          <span className={`${styles.kpiValue} ${!stats.isBreached ? styles.healthy : styles.fault}`}>
+            {stats.statusText}
           </span>
         </div>
       </div>
 
       {/* Main Workspace */}
       <div className={styles.mainContent}>
-        {/* Left Sidebar: Channels, Search & Test Injections */}
+        {/* Left Sidebar: Wire Channel List, Multi-Select & Search */}
         <aside className={styles.leftSidebar}>
           <div className={styles.sectionHeader}>
-            <span>Wire Channels & Intersections</span>
+            <span>Wire Channels & Multi-Select</span>
             <div style={{ display: 'flex', gap: '4px' }}>
               <button 
                 className={styles.tabBtn} 
                 style={{ fontSize: '0.65rem', padding: '2px 6px' }}
-                onClick={triggerRandomFaults}
-                title="Inject random fault bits for testing"
+                onClick={triggerThresholdFaults}
+                title="Simulate random capacity readings with faults (< 59%)"
               >
                 <Zap size={12} style={{ marginRight: '2px' }} />
-                Sim Faults
+                Sim &lt; 59%
               </button>
               <button 
                 className={styles.tabBtn} 
                 style={{ fontSize: '0.65rem', padding: '2px 6px' }}
                 onClick={clearAllFaults}
-                title="Clear test faults"
+                title="Clear all faults"
               >
                 <RotateCcw size={12} />
               </button>
@@ -503,18 +818,18 @@ export const LiveGloveStatus: React.FC = () => {
           </div>
 
           <div style={{ padding: '0.75rem 0.75rem 0', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            {/* Interactive Search Bar (Wires OR Intersections e.g. X2, Y20 or X2,Y20) */}
+            {/* Interactive Search Bar */}
             <div style={{ position: 'relative' }}>
               <Search size={14} style={{ position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
               <input 
                 type="text"
-                placeholder="Search intersection (e.g. X2, Y20 or X12, Y5)..."
+                placeholder="Search wires (e.g. A, C, 4) or intersection (e.g. A4, B6)..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 style={{
                   width: '100%',
-                  background: parsedSearchIntersection ? 'rgba(0, 240, 255, 0.12)' : 'rgba(0,0,0,0.2)',
-                  border: `1px solid ${parsedSearchIntersection ? '#00f0ff' : 'var(--border-color)'}`,
+                  background: selectedWireIds.length > 0 ? 'rgba(0, 240, 255, 0.12)' : 'rgba(0,0,0,0.2)',
+                  border: `1px solid ${selectedWireIds.length > 0 ? '#00f0ff' : 'var(--border-color)'}`,
                   color: 'white',
                   padding: '6px 8px 6px 28px',
                   borderRadius: '4px',
@@ -526,7 +841,7 @@ export const LiveGloveStatus: React.FC = () => {
                 <button
                   onClick={() => {
                     setSearchQuery('');
-                    setSelectedIntersection(null);
+                    clearWireSelection();
                   }}
                   style={{
                     position: 'absolute',
@@ -545,38 +860,22 @@ export const LiveGloveStatus: React.FC = () => {
               )}
             </div>
 
-            {/* Quick Intersection Search Feedback Tag */}
-            {parsedSearchIntersection && (
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                background: 'rgba(0, 240, 255, 0.15)',
-                border: '1px solid #00f0ff',
-                padding: '5px 8px',
-                borderRadius: '4px',
-                fontSize: '0.75rem',
-                color: '#00f0ff'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Crosshair size={14} />
-                  <span>Targeting <strong>({parsedSearchIntersection.xId}, {parsedSearchIntersection.yId})</strong> on {parsedSearchIntersection.aspect.toUpperCase()} VIEW</span>
-                </div>
-              </div>
-            )}
-
-            {/* Quick Intersection Jump Buttons */}
+            {/* Quick Preset Jump Buttons */}
             <div style={{ display: 'flex', gap: '4px', overflowX: 'auto', paddingBottom: '2px' }}>
               <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', alignSelf: 'center', whiteSpace: 'nowrap' }}>Try:</span>
               {[
-                { label: 'X2, Y20', q: 'X2, Y20' },
-                { label: 'X8, Y5', q: 'X8, Y5' },
-                { label: 'X15, Y14', q: 'X15, Y14' },
-                { label: 'X24, Y10', q: 'X24, Y10' }
+                { label: 'Wire A', ids: [`${prefix}-A`] },
+                { label: 'Wire 4', ids: [`${prefix}-4`] },
+                { label: 'Wires A & 4', ids: [`${prefix}-A`, `${prefix}-4`] },
+                { label: 'Wires A, C, 5', ids: [`${prefix}-A`, `${prefix}-C`, `${prefix}-5`] },
+                { label: 'Breach A4', q: 'A4' }
               ].map(item => (
                 <button
                   key={item.label}
-                  onClick={() => setSearchQuery(item.q)}
+                  onClick={() => {
+                    if (item.q) setSearchQuery(item.q);
+                    else if (item.ids) selectWires(item.ids);
+                  }}
                   style={{
                     background: 'rgba(255,255,255,0.06)',
                     border: '1px solid var(--border-color)',
@@ -593,9 +892,9 @@ export const LiveGloveStatus: React.FC = () => {
               ))}
             </div>
 
-            {/* Wire Filter Tabs */}
+            {/* Filter Tabs */}
             <div style={{ display: 'flex', gap: '4px' }}>
-              {(['ALL', 'X_WIRES', 'Y_FRONT', 'Y_BACK', 'FAULTS'] as const).map(f => (
+              {(['ALL', 'HORIZ', 'VERT', 'FAULTS'] as const).map(f => (
                 <button
                   key={f}
                   onClick={() => setChannelFilter(f)}
@@ -611,9 +910,40 @@ export const LiveGloveStatus: React.FC = () => {
                     fontWeight: channelFilter === f ? 600 : 400
                   }}
                 >
-                  {f === 'ALL' ? 'ALL' : f === 'X_WIRES' ? 'X (1-24)' : f === 'Y_FRONT' ? 'Y-Front' : f === 'Y_BACK' ? 'Y-Back' : 'FAULTS'}
+                  {f === 'ALL' ? 'ALL' : f === 'HORIZ' ? 'Horiz (1-10)' : f === 'VERT' ? 'Vert (A-F)' : 'FAULTS'}
                 </button>
               ))}
+            </div>
+
+            {/* Batch Selection Toolbar */}
+            <div className={styles.batchToolbar}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <CheckSquare size={13} color="var(--status-healthy)" />
+                <span>{selectedWireIds.length} Chosen</span>
+              </div>
+              <div style={{ display: 'flex', gap: '4px' }}>
+                <button 
+                  className={styles.batchToolbarBtn}
+                  onClick={() => selectWires(channels.filter(c => c.hand === activeHand).map(c => c.id))}
+                >
+                  Select All
+                </button>
+                <button 
+                  className={styles.batchToolbarBtn}
+                  onClick={clearWireSelection}
+                >
+                  Clear
+                </button>
+                {allFaultedWires.length > 0 && (
+                  <button 
+                    className={styles.batchToolbarBtn}
+                    style={{ color: '#ff6b6b' }}
+                    onClick={() => selectWires(allFaultedWires)}
+                  >
+                    Select Faults
+                  </button>
+                )}
+              </div>
             </div>
 
             {selectedZone && (
@@ -629,40 +959,63 @@ export const LiveGloveStatus: React.FC = () => {
             )}
           </div>
 
+          {/* Wire List with Checkboxes & Capacity Percentages */}
           <div className={styles.channelList}>
             {filteredChannels.map(c => {
               const faulted = isChannelFaulted(c.id);
-              const isSelected = selectedChannelId === c.id;
-              const isX = c.id.includes('-X');
+              const isSelected = isWireSelected(c.id);
+              const isHoriz = /\d+$/.test(c.id);
+              const wireTag = c.id.replace(/^[^-]+-/, '');
+              const reading = getWireReading(wireTag);
 
               return (
                 <div 
                   key={c.id}
                   className={`${styles.channelItem} ${faulted ? styles.faulted : ''} ${isSelected ? styles.selected : ''}`}
-                  onClick={() => {
-                    setSelectedChannelId(c.id);
-                    setSelectedIntersection(null);
-                    setSelectedZone(c.region);
-                  }}
+                  onClick={() => toggleSelectWire(c.id)}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <input 
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={(e) => {
+                        e.stopPropagation();
+                        toggleSelectWire(c.id);
+                      }}
+                      className={styles.customCheckbox}
+                    />
+
                     {faulted ? (
                       <AlertTriangle size={14} color="var(--status-fault)" />
                     ) : (
                       <CheckCircle size={14} color="var(--status-healthy)" />
                     )}
+
                     <div>
                       <div style={{ fontWeight: 600, fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span>{c.id.replace(/^[^-]+-/, '')}</span>
+                        <span>Wire {wireTag}</span>
                         <span style={{ 
                           fontSize: '0.62rem', 
                           padding: '1px 5px', 
                           borderRadius: '3px', 
-                          background: isX ? 'rgba(0, 240, 255, 0.15)' : 'rgba(255, 170, 0, 0.15)',
-                          color: isX ? '#00f0ff' : '#ffaa00'
+                          background: isHoriz ? 'rgba(0, 240, 255, 0.15)' : 'rgba(255, 170, 0, 0.15)',
+                          color: isHoriz ? '#00f0ff' : '#ffaa00'
                         }}>
-                          {isX ? 'Horizontal Wire' : 'Vertical Wire'}
+                          {isHoriz ? `Row ${wireTag}` : `Col ${wireTag}`}
                         </span>
+
+                        {reading !== null && (
+                          <span style={{
+                            fontSize: '0.65rem',
+                            fontWeight: 700,
+                            padding: '1px 5px',
+                            borderRadius: '3px',
+                            background: reading < FAULT_THRESHOLD_PERCENT ? 'rgba(255,42,42,0.25)' : 'rgba(0,240,255,0.15)',
+                            color: reading < FAULT_THRESHOLD_PERCENT ? '#ff6b6b' : 'var(--status-healthy)'
+                          }}>
+                            {reading}%
+                          </span>
+                        )}
                       </div>
                       <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'capitalize' }}>
                         {c.label}
@@ -673,7 +1026,7 @@ export const LiveGloveStatus: React.FC = () => {
                   <button 
                     onClick={(e) => {
                       e.stopPropagation();
-                      toggleFault(c.id);
+                      toggleWireFault(c.id);
                     }}
                     style={{
                       background: faulted ? 'rgba(255,42,42,0.2)' : 'rgba(0,240,255,0.1)',
@@ -693,47 +1046,50 @@ export const LiveGloveStatus: React.FC = () => {
           </div>
         </aside>
 
-        {/* Center Viewer: FRONT (Palmar Y1..Y10) & BACK (Dorsal Y11..Y20) 2D Diagrams */}
+        {/* Center 2D Diagrams: FRONT VIEW & BACK VIEW */}
         <main className={styles.centerViewer}>
           <div className={styles.diagramControls}>
             <div className={styles.viewTabs}>
               <button 
                 className={`${styles.tabBtn} ${activeHand === 'left' ? styles.active : ''}`}
-                onClick={() => setActiveHand('left')}
+                onClick={() => {
+                  setActiveHand('left');
+                  clearWireSelection();
+                }}
               >
-                Left Glove & Arm
+                Left Hand & Arm
               </button>
               <button 
                 className={`${styles.tabBtn} ${activeHand === 'right' ? styles.active : ''}`}
-                onClick={() => setActiveHand('right')}
+                onClick={() => {
+                  setActiveHand('right');
+                  clearWireSelection();
+                }}
               >
-                Right Glove & Arm
+                Right Hand & Arm
               </button>
             </div>
 
             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
               <Info size={14} />
-              24 Horiz Wires (X1..X24) &bull; Front Vert Wires (Y1..Y10) &bull; Back Vert Wires (Y11..Y20) [Knuckles to Elbow]
+              10 Horizontal (Row 1&ndash;10) &bull; 6 Vertical (Col A&ndash;F) &bull; Fault triggers when reading &lt; 59%
             </div>
           </div>
 
           <div className={styles.diagramGrid}>
-            {/* FRONT VIEW (Palmar Aspect: Y1 to Y10) */}
-            <div className={styles.diagramCard} style={{
-              border: selectedIntersection?.aspect === 'front' ? '1px solid #00f0ff' : undefined,
-              boxShadow: selectedIntersection?.aspect === 'front' ? '0 0 15px rgba(0, 240, 255, 0.25)' : undefined
-            }}>
+            {/* FRONT VIEW (Palmar Aspect) */}
+            <div className={styles.diagramCard}>
               <div className={styles.diagramHeader}>
                 <div className={styles.diagramTitle}>
                   <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--status-healthy)', display: 'inline-block' }}></span>
-                  FRONT VIEW (Palmar Aspect: Knuckles to Elbow)
+                  FRONT VIEW (Palmar Aspect)
                 </div>
                 <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                  Vertical Wires: <strong>Y1 &ndash; Y10</strong> &bull; 24 Horizontal (X1..X24)
+                  10 Horiz (1&ndash;10) &bull; 6 Vert (A&ndash;F)
                 </span>
               </div>
 
-              <div className={styles.diagramSvgWrapper} style={{ minHeight: '620px' }}>
+              <div className={styles.diagramSvgWrapper} style={{ minHeight: '600px' }}>
                 <Hand2DDiagram 
                   hand={activeHand}
                   view="front"
@@ -741,39 +1097,35 @@ export const LiveGloveStatus: React.FC = () => {
                   isChannelFaulted={isChannelFaulted}
                   isZoneFaulted={isZoneFaulted}
                   isIntersectionFaulted={isIntersectionFaulted}
-                  selectedChannelId={selectedChannelId}
+                  selectedWireIds={selectedWireIds}
                   selectedIntersection={selectedIntersection}
                   selectedZone={selectedZone}
-                  onSelectChannel={(id) => {
-                    setSelectedChannelId(id);
-                    setSelectedIntersection(null);
-                  }}
+                  onToggleSelectWire={toggleSelectWire}
                   onSelectIntersection={(intSec) => {
                     setSelectedIntersection(intSec);
-                    setSelectedChannelId(null);
-                    setSearchQuery(`${intSec.xId}, ${intSec.yId}`);
+                    const colId = `${prefix}-${intSec.colLetter}`;
+                    const rowId = `${prefix}-${intSec.rowNum}`;
+                    setSelectedWireIds(prev => Array.from(new Set([...prev, colId, rowId])));
+                    setSearchQuery(`${intSec.colLetter}${intSec.rowNum}`);
                   }}
                   onSelectZone={setSelectedZone}
                 />
               </div>
             </div>
 
-            {/* BACK VIEW (Dorsal Aspect: Y11 to Y20) */}
-            <div className={styles.diagramCard} style={{
-              border: selectedIntersection?.aspect === 'back' ? '1px solid #00f0ff' : undefined,
-              boxShadow: selectedIntersection?.aspect === 'back' ? '0 0 15px rgba(0, 240, 255, 0.25)' : undefined
-            }}>
+            {/* BACK VIEW (Dorsal Aspect) */}
+            <div className={styles.diagramCard}>
               <div className={styles.diagramHeader}>
                 <div className={styles.diagramTitle}>
                   <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--status-healthy)', display: 'inline-block' }}></span>
-                  BACK VIEW (Dorsal Aspect: Knuckles to Elbow)
+                  BACK VIEW (Dorsal Aspect)
                 </div>
                 <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                  Vertical Wires: <strong>Y11 &ndash; Y20</strong> &bull; 24 Horizontal (X1..X24)
+                  10 Horiz (1&ndash;10) &bull; 6 Vert (A&ndash;F)
                 </span>
               </div>
 
-              <div className={styles.diagramSvgWrapper} style={{ minHeight: '620px' }}>
+              <div className={styles.diagramSvgWrapper} style={{ minHeight: '600px' }}>
                 <Hand2DDiagram 
                   hand={activeHand}
                   view="back"
@@ -781,17 +1133,16 @@ export const LiveGloveStatus: React.FC = () => {
                   isChannelFaulted={isChannelFaulted}
                   isZoneFaulted={isZoneFaulted}
                   isIntersectionFaulted={isIntersectionFaulted}
-                  selectedChannelId={selectedChannelId}
+                  selectedWireIds={selectedWireIds}
                   selectedIntersection={selectedIntersection}
                   selectedZone={selectedZone}
-                  onSelectChannel={(id) => {
-                    setSelectedChannelId(id);
-                    setSelectedIntersection(null);
-                  }}
+                  onToggleSelectWire={toggleSelectWire}
                   onSelectIntersection={(intSec) => {
                     setSelectedIntersection(intSec);
-                    setSelectedChannelId(null);
-                    setSearchQuery(`${intSec.xId}, ${intSec.yId}`);
+                    const colId = `${prefix}-${intSec.colLetter}`;
+                    const rowId = `${prefix}-${intSec.rowNum}`;
+                    setSelectedWireIds(prev => Array.from(new Set([...prev, colId, rowId])));
+                    setSearchQuery(`${intSec.colLetter}${intSec.rowNum}`);
                   }}
                   onSelectZone={setSelectedZone}
                 />
@@ -800,121 +1151,201 @@ export const LiveGloveStatus: React.FC = () => {
           </div>
         </main>
 
-        {/* Right Sidebar: Telemetry Inspector */}
+        {/* Right Sidebar: Telemetry Inspector with Multi-Wire Actions & Capacity Stats */}
         <aside className={styles.rightSidebar}>
           <div className={styles.sectionHeader}>
             <span>Telemetry Inspector</span>
           </div>
 
           <div style={{ padding: '1rem', display: 'flex', flex: 1, flexDirection: 'column', gap: '1rem', overflowY: 'auto' }}>
-            {selectedIntersection ? (
-              /* Display Selected Intersection Details (e.g. X2, Y20) */
+            {selectedWireIds.length > 0 ? (
+              /* Display Multi-Wire Selection Inspector */
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <div style={{ background: 'rgba(0, 240, 255, 0.08)', padding: '0.75rem', borderRadius: '6px', border: '1px solid #00f0ff' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ fontSize: '0.7rem', color: '#00f0ff', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <Layers size={13} />
+                      Active Wire Selection ({selectedWireIds.length})
+                    </div>
+                    <button 
+                      onClick={clearWireSelection}
+                      style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.7rem' }}
+                    >
+                      Clear
+                    </button>
+                  </div>
+
+                  {/* Wire Chips with Live Capacity Readings */}
+                  <div className={styles.selectionChipsWrap}>
+                    {selectedWireIds.map(wireId => {
+                      const faulted = isChannelFaulted(wireId);
+                      const tag = wireId.replace(/^[^-]+-/, '');
+                      const isHoriz = /\d+$/.test(tag);
+                      const reading = getWireReading(tag);
+
+                      return (
+                        <div 
+                          key={wireId}
+                          className={`${styles.wireChip} ${faulted ? styles.faulted : ''}`}
+                          onClick={() => toggleWireFault(wireId)}
+                          title={`Click to toggle fault on Wire ${tag}`}
+                        >
+                          <span>{isHoriz ? `Row ${tag}` : `Col ${tag}`}</span>
+                          {reading !== null && (
+                            <span style={{ fontWeight: 700, fontSize: '0.62rem' }}>[{reading}%]</span>
+                          )}
+                          <span style={{ fontSize: '0.6rem', opacity: 0.8 }}>({faulted ? 'FAULT' : 'OK'})</span>
+                          <button 
+                            className={styles.wireChipRemove}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleSelectWire(wireId);
+                            }}
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Primary Multi-Wire Actions */}
+                <div className={styles.multiActionGrid}>
+                  <button 
+                    className={styles.actionBtnPrimary}
+                    onClick={faultSelectedWires}
+                    title="Simulate fault breach across all chosen wires"
+                  >
+                    <Zap size={14} />
+                    Fault Chosen ({selectedWireIds.length})
+                  </button>
+
+                  <button 
+                    className={styles.actionBtnSecondary}
+                    onClick={clearFaultOnSelectedWires}
+                    title="Clear fault from chosen wires"
+                  >
+                    <CheckCircle size={14} />
+                    Clear Faults
+                  </button>
+                </div>
+
+                {/* Matrix Intersection summary for chosen wires */}
+                {selectedHorizWires.length > 0 && selectedVertWires.length > 0 && (
+                  <div style={{ background: 'rgba(0,0,0,0.25)', padding: '0.65rem', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
+                    <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginBottom: '4px' }}>
+                      Intersecting Mesh Nodes ({selectedHorizWires.length * selectedVertWires.length} Junctions):
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px' }}>
+                      {selectedVertWires.map(col => 
+                        selectedHorizWires.map(row => (
+                          <span 
+                            key={`${col}-${row}`}
+                            style={{
+                              fontSize: '0.65rem',
+                              fontFamily: 'monospace',
+                              padding: '1px 5px',
+                              borderRadius: '3px',
+                              background: isIntersectionFaulted(col, row) ? 'rgba(255,42,42,0.25)' : 'rgba(0,240,255,0.1)',
+                              color: isIntersectionFaulted(col, row) ? '#ff6b6b' : '#00f0ff',
+                              border: `1px solid ${isIntersectionFaulted(col, row) ? 'rgba(255,42,42,0.4)' : 'rgba(0,240,255,0.2)'}`
+                            }}
+                          >
+                            ({col}, {row})
+                          </span>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                  <div style={{ background: 'rgba(0,0,0,0.2)', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)' }}>
+                    <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Horizontal Rows (1&ndash;10)</div>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#00f0ff' }}>
+                      {selectedHorizWires.length > 0 ? selectedHorizWires.map(r => `Row ${r}`).join(', ') : 'None'}
+                    </div>
+                  </div>
+                  <div style={{ background: 'rgba(0,0,0,0.2)', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)' }}>
+                    <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Vertical Columns (A&ndash;F)</div>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#ffaa00' }}>
+                      {selectedVertWires.length > 0 ? selectedVertWires.map(c => `Col ${c}`).join(', ') : 'None'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : selectedIntersection ? (
+              /* Display Selected Single Intersection Details */
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 <div style={{ background: 'rgba(0, 240, 255, 0.08)', padding: '0.75rem', borderRadius: '6px', border: '1px solid #00f0ff' }}>
                   <div style={{ fontSize: '0.7rem', color: '#00f0ff', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                     🎯 Selected Mesh Intersection
                   </div>
-                  <div style={{ fontSize: '1.4rem', fontWeight: 800, color: isIntersectionFaulted(selectedIntersection.xNum, selectedIntersection.yNum) ? 'var(--status-fault)' : '#00f0ff', marginTop: '2px' }}>
-                    ({selectedIntersection.xId}, {selectedIntersection.yId})
+                  <div style={{ fontSize: '1.4rem', fontWeight: 800, color: isIntersectionFaulted(selectedIntersection.colLetter, selectedIntersection.rowNum) ? 'var(--status-fault)' : '#00f0ff', marginTop: '2px' }}>
+                    ({selectedIntersection.colLetter}, {selectedIntersection.rowNum})
                   </div>
                   <div style={{ fontSize: '0.8rem', color: 'var(--text-main)', marginTop: '4px' }}>
-                    Intersection of Row <strong>{selectedIntersection.xId}</strong> & Column <strong>{selectedIntersection.yId}</strong>
+                    Column <strong>Wire {selectedIntersection.colLetter}</strong> &bull; Row <strong>Wire {selectedIntersection.rowNum}</strong>
                   </div>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
                   <div style={{ background: 'rgba(0,0,0,0.2)', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)' }}>
-                    <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Aspect Location</div>
+                    <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Aspect</div>
                     <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#00f0ff' }}>
-                      {selectedIntersection.aspect === 'front' ? 'Front (Palmar Y1-Y10)' : 'Back (Dorsal Y11-Y20)'}
+                      {selectedIntersection.aspect === 'front' ? 'Front (Palmar)' : 'Back (Dorsal)'}
                     </div>
                   </div>
                   <div style={{ background: 'rgba(0,0,0,0.2)', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)' }}>
                     <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Status</div>
-                    <div style={{ fontSize: '0.85rem', fontWeight: 600, color: isIntersectionFaulted(selectedIntersection.xNum, selectedIntersection.yNum) ? 'var(--status-fault)' : 'var(--status-healthy)' }}>
-                      {isIntersectionFaulted(selectedIntersection.xNum, selectedIntersection.yNum) ? 'FAULT DETECTED' : 'NOMINAL (0)'}
-                    </div>
-                  </div>
-                  <div style={{ background: 'rgba(0,0,0,0.2)', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)' }}>
-                    <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Horizontal Wire</div>
-                    <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-main)' }}>
-                      Row {selectedIntersection.xNum} of 24
-                    </div>
-                  </div>
-                  <div style={{ background: 'rgba(0,0,0,0.2)', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)' }}>
-                    <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Vertical Wire</div>
-                    <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-main)' }}>
-                      Col {selectedIntersection.aspect === 'front' ? selectedIntersection.yNum : (selectedIntersection.yNum - 10)} of 10
+                    <div style={{ fontSize: '0.85rem', fontWeight: 600, color: isIntersectionFaulted(selectedIntersection.colLetter, selectedIntersection.rowNum) ? 'var(--status-fault)' : 'var(--status-healthy)' }}>
+                      {isIntersectionFaulted(selectedIntersection.colLetter, selectedIntersection.rowNum) ? 'FAULT DETECTED' : 'NOMINAL (0)'}
                     </div>
                   </div>
                 </div>
 
                 <button 
-                  onClick={() => toggleIntersectionFault(selectedIntersection.xNum, selectedIntersection.yNum)}
-                  style={{
-                    background: isIntersectionFaulted(selectedIntersection.xNum, selectedIntersection.yNum) ? 'rgba(255,42,42,0.2)' : 'rgba(0,240,255,0.15)',
-                    border: `1px solid ${isIntersectionFaulted(selectedIntersection.xNum, selectedIntersection.yNum) ? 'var(--status-fault)' : 'var(--border-color)'}`,
-                    color: isIntersectionFaulted(selectedIntersection.xNum, selectedIntersection.yNum) ? 'var(--status-fault)' : 'var(--status-healthy)',
-                    padding: '8px',
-                    borderRadius: '6px',
-                    fontSize: '0.8rem',
-                    fontWeight: 600,
-                    cursor: 'pointer'
-                  }}
+                  onClick={() => toggleIntersectionFault(selectedIntersection.colLetter, selectedIntersection.rowNum, selectedIntersection.aspect)}
+                  className={styles.actionBtnPrimary}
+                  style={{ width: '100%', padding: '10px' }}
                 >
-                  {isIntersectionFaulted(selectedIntersection.xNum, selectedIntersection.yNum) ? 'Clear Intersection Fault' : 'Simulate Fault on Intersection'}
+                  <Zap size={14} />
+                  {isIntersectionFaulted(selectedIntersection.colLetter, selectedIntersection.rowNum) ? 'Clear Intersection Fault' : 'Simulate Intersection Fault'}
                 </button>
               </div>
-            ) : selectedSensor ? (
-              /* Display Selected Individual Channel Details */
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                <div style={{ background: 'rgba(0,0,0,0.3)', padding: '0.75rem', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
-                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Selected Wire Channel</div>
-                  <div style={{ fontSize: '1.25rem', fontWeight: 700, color: isChannelFaulted(selectedSensor.id) ? 'var(--status-fault)' : 'var(--status-healthy)', marginTop: '2px' }}>
-                    {selectedSensor.id.replace(/^[^-]+-/, '')}
-                  </div>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-main)', marginTop: '4px' }}>
-                    {selectedSensor.label}
-                  </div>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-                  <div style={{ background: 'rgba(0,0,0,0.2)', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)' }}>
-                    <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Wire Type</div>
-                    <div style={{ fontSize: '0.85rem', fontWeight: 600, color: selectedSensor.id.includes('-X') ? '#00f0ff' : '#ffaa00' }}>
-                      {selectedSensor.id.includes('-X') ? 'Horizontal (X)' : 'Vertical (Y)'}
-                    </div>
-                  </div>
-                  <div style={{ background: 'rgba(0,0,0,0.2)', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)' }}>
-                    <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Status</div>
-                    <div style={{ fontSize: '0.85rem', fontWeight: 600, color: isChannelFaulted(selectedSensor.id) ? 'var(--status-fault)' : 'var(--status-healthy)' }}>
-                      {isChannelFaulted(selectedSensor.id) ? 'FAULT (1)' : 'NOMINAL (0)'}
-                    </div>
-                  </div>
-                  <div style={{ background: 'rgba(0,0,0,0.2)', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)' }}>
-                    <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Anatomical Zone</div>
-                    <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-main)', textTransform: 'capitalize' }}>
-                      {selectedSensor.region.replace('_', ' ')}
-                    </div>
-                  </div>
-                  <div style={{ background: 'rgba(0,0,0,0.2)', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)' }}>
-                    <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Fibre Route</div>
-                    <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-main)' }}>
-                      {selectedSensor.fibreId}
-                    </div>
-                  </div>
-                </div>
-
-                <div style={{ background: 'rgba(0,0,0,0.2)', padding: '0.75rem', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
-                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '4px' }}>3D Spatial Position</div>
-                  <div style={{ fontFamily: 'monospace', fontSize: '0.75rem', color: 'var(--status-healthy)' }}>
-                    X: {selectedSensor.position[0].toFixed(3)} | Y: {selectedSensor.position[1].toFixed(3)} | Z: {selectedSensor.position[2].toFixed(3)}
-                  </div>
-                </div>
-              </div>
             ) : (
-              <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem', padding: '2rem 1rem' }}>
-                Type an intersection query (e.g. <code>X2, Y20</code>) or click any wire or junction dot on the hand and arm diagrams.
+              /* Prompt state when nothing is selected */
+              <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem', padding: '1.5rem 1rem', display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'center' }}>
+                <Crosshair size={28} color="rgba(0, 240, 255, 0.4)" />
+                <span>
+                  Click any horizontal wire (1&ndash;10), vertical wire (A&ndash;F), or node dot to select one or multiple wires.
+                </span>
+
+                {/* Preset quick actions */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', width: '100%' }}>
+                  <button
+                    onClick={triggerThresholdFaults}
+                    className={styles.actionBtnPrimary}
+                    style={{ width: '100%' }}
+                  >
+                    <Zap size={14} />
+                    Simulate &lt; 59% Fault Threshold Trigger
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      const wires = [`${prefix}-B`];
+                      selectWires(wires);
+                      setSimulatedFaults(prev => ({ ...prev, [`${prefix}-B`]: true }));
+                      triggerAlarm();
+                    }}
+                    className={styles.actionBtnMuted}
+                    style={{ width: '100%' }}
+                  >
+                    Simulate Single Wire Fault (Wire B)
+                  </button>
+                </div>
               </div>
             )}
 
@@ -949,23 +1380,21 @@ export const LiveGloveStatus: React.FC = () => {
 
 // ----------------------------------------------------------------------------------
 // 2D SVG Hand & Forearm Diagram Component:
-// - 24 Horizontal Wires (X1..X24) from Knuckles (y=140) to Elbow (y=625), equally spaced
-// - 20 Vertical Lines from Knuckles (y=140) to Elbow (y=625) (10 Front Y1..Y10 / 10 Back Y11..Y20)
+// - 10 Horizontal Wires (Row 1..10) equally spaced across knuckles to elbow
+// - 6 Vertical Wires (Col A..F) running from knuckles to elbow
 // - 5 Finger Vertical Wires (1 per finger with 3 equidistant dots)
-// - Interactive Intersection Matrix (240 Front + 240 Back) with Crosshair Highlight
+// - 60 Interactive Matrix Intersections (Col A..F x Row 1..10)
 // ----------------------------------------------------------------------------------
 
-// 24 Horizontal Wires starting at knuckles (y=140) down to elbow (y=625), equally spaced
-const HORIZ_X_WIRES = Array.from({ length: 24 }, (_, i) => {
-  const num = i + 1;
-  // Equally spaced from knuckles (140) to elbow (625)
-  const y = 140 + (i * (625 - 140) / 23);
+// 10 Horizontal Rows (1..10) equally spaced from knuckles (y=150) to elbow (y=620)
+const HORIZ_ROWS = HORIZ_NUMBERS.map((num, idx) => {
+  const y = 150 + (idx * (620 - 150) / 9);
   
   let leftX: number;
   let rightX: number;
 
   if (y <= 325) {
-    // Hand & Palm region
+    // Palm region
     leftX = 75 - (y > 220 ? (y - 220) * 0.15 : (220 - y) * 0.1);
     rightX = 220 - (y > 250 ? (y - 250) * 0.15 : 0);
   } else {
@@ -976,30 +1405,18 @@ const HORIZ_X_WIRES = Array.from({ length: 24 }, (_, i) => {
 
   return {
     num,
-    id: `X${num}`,
+    id: `ROW-${num}`,
     y,
     span: [Math.max(68, leftX), Math.min(232, rightX)]
   };
 });
 
-// Front Vertical Wires: Y1 to Y10 from Knuckles to Elbow
-const FRONT_VERT_Y_WIRES = Array.from({ length: 10 }, (_, j) => {
-  const num = j + 1;
-  const u = j / 9; // fraction from 0 to 1
+// 6 Vertical Columns (A..F) from knuckles to elbow
+const VERT_COLS = VERT_LETTERS.map((colLetter, j) => {
+  const u = j / 5; // fraction from 0 to 1
   return {
-    num,
-    id: `Y${num}`,
-    u
-  };
-});
-
-// Back Vertical Wires: Y11 to Y20 from Knuckles to Elbow
-const BACK_VERT_Y_WIRES = Array.from({ length: 10 }, (_, j) => {
-  const num = 11 + j;
-  const u = j / 9; // fraction from 0 to 1
-  return {
-    num,
-    id: `Y${num}`,
+    letter: colLetter,
+    id: `COL-${colLetter}`,
     u
   };
 });
@@ -1154,11 +1571,11 @@ interface Hand2DDiagramProps {
   channels: any[];
   isChannelFaulted: (channelId: string) => boolean;
   isZoneFaulted: (region: GloveRegion) => boolean;
-  isIntersectionFaulted: (xNum: number, yNum: number) => boolean;
-  selectedChannelId: string | null;
+  isIntersectionFaulted: (colLetter: string, rowNum: number) => boolean;
+  selectedWireIds: string[];
   selectedIntersection: SelectedIntersection | null;
   selectedZone: GloveRegion | null;
-  onSelectChannel: (id: string) => void;
+  onToggleSelectWire: (wireId: string) => void;
   onSelectIntersection: (intSec: SelectedIntersection) => void;
   onSelectZone: (zone: GloveRegion) => void;
 }
@@ -1170,10 +1587,10 @@ const Hand2DDiagram: React.FC<Hand2DDiagramProps> = ({
   isChannelFaulted,
   isZoneFaulted,
   isIntersectionFaulted,
-  selectedChannelId,
+  selectedWireIds,
   selectedIntersection,
   selectedZone,
-  onSelectChannel,
+  onToggleSelectWire,
   onSelectIntersection,
   onSelectZone
 }) => {
@@ -1222,30 +1639,23 @@ const Hand2DDiagram: React.FC<Hand2DDiagramProps> = ({
   };
 
   const fingerWires = FINGER_WIRES[hand];
-  const vertWires = view === 'front' ? FRONT_VERT_Y_WIRES : BACK_VERT_Y_WIRES;
   const prefix = hand === 'left' ? 'L' : 'R';
 
-  // Check if an intersection is active on this view
-  const isIntersectionTargeted = selectedIntersection && selectedIntersection.aspect === view;
-  const targetX = selectedIntersection?.xNum;
-  const targetY = selectedIntersection?.yNum;
-
-  // Build the vertical wire SVG paths running continuously across all 24 horizontal rows
+  // Build the vertical wire SVG paths running continuously across all 10 horizontal rows
   const vertWirePaths = useMemo(() => {
-    return vertWires.map(col => {
-      // Calculate points along every horizontal row
-      const pts = HORIZ_X_WIRES.map(row => {
+    return VERT_COLS.map(col => {
+      const pts = HORIZ_ROWS.map(row => {
         const x = row.span[0] + col.u * (row.span[1] - row.span[0]);
         return `${x.toFixed(1)} ${row.y.toFixed(1)}`;
       });
       return {
         ...col,
         pathD: `M ${pts.join(' L ')}`,
-        xTop: HORIZ_X_WIRES[0].span[0] + col.u * (HORIZ_X_WIRES[0].span[1] - HORIZ_X_WIRES[0].span[0]),
-        xBottom: HORIZ_X_WIRES[23].span[0] + col.u * (HORIZ_X_WIRES[23].span[1] - HORIZ_X_WIRES[23].span[0])
+        xTop: HORIZ_ROWS[0].span[0] + col.u * (HORIZ_ROWS[0].span[1] - HORIZ_ROWS[0].span[0]),
+        xBottom: HORIZ_ROWS[9].span[0] + col.u * (HORIZ_ROWS[9].span[1] - HORIZ_ROWS[9].span[0])
       };
     });
-  }, [vertWires]);
+  }, []);
 
   return (
     <svg 
@@ -1270,10 +1680,10 @@ const Hand2DDiagram: React.FC<Hand2DDiagramProps> = ({
         </radialGradient>
       </defs>
 
-      {/* Main Hand & Arm Graphics Group (flipped via SVG transform if needed) */}
+      {/* Main Hand & Arm Graphics Group */}
       <g transform={flipX ? 'translate(340, 0) scale(-1, 1)' : undefined}>
         
-        {/* Anatomical Silhouettes: Hand & Forearm Sleeve */}
+        {/* Anatomical Silhouettes */}
         <g style={{ cursor: 'pointer' }}>
           {/* Hand & Palm */}
           <path
@@ -1325,11 +1735,11 @@ const Hand2DDiagram: React.FC<Hand2DDiagramProps> = ({
           />
         </g>
 
-        {/* 1. Finger Vertical Wires (5 wires with 3 equidistant dots each) */}
+        {/* 1. Finger Vertical Wires */}
         <g>
           {fingerWires.map(fw => {
             const wireKey = `${prefix}-${fw.yWireId}`;
-            const isWireSelected = selectedChannelId === wireKey || selectedChannelId === fw.yWireId;
+            const isWireSelected = selectedWireIds.includes(wireKey) || selectedWireIds.includes(fw.yWireId);
             const isWireFaulted = isChannelFaulted(wireKey);
 
             return (
@@ -1337,7 +1747,7 @@ const Hand2DDiagram: React.FC<Hand2DDiagramProps> = ({
                 key={fw.finger}
                 onClick={(e) => {
                   e.stopPropagation();
-                  onSelectChannel(wireKey);
+                  onToggleSelectWire(wireKey);
                   onSelectZone(fw.region);
                 }}
                 style={{ cursor: 'pointer' }}
@@ -1369,56 +1779,71 @@ const Hand2DDiagram: React.FC<Hand2DDiagramProps> = ({
           })}
         </g>
 
-        {/* 2. 24 Horizontal Wires (X1..X24 from Knuckles to Elbow, equally spaced) */}
+        {/* 2. 10 Horizontal Wires (Row 1..10) */}
         <g>
-          {HORIZ_X_WIRES.map(row => {
-            const wireKey = `${prefix}-X${row.num}`;
-            const isRowSelected = selectedChannelId === wireKey || (isIntersectionTargeted && targetX === row.num);
+          {HORIZ_ROWS.map(row => {
+            const wireKey = `${prefix}-${row.num}`;
+            const isRowSelected = selectedWireIds.includes(wireKey);
             const isRowFaulted = isChannelFaulted(wireKey);
 
             return (
               <g 
-                key={row.id}
+                key={row.num}
                 onClick={(e) => {
                   e.stopPropagation();
-                  onSelectChannel(wireKey);
+                  onToggleSelectWire(wireKey);
                   onSelectZone(row.y <= 325 ? palmRegion : forearmRegion);
                 }}
                 style={{ cursor: 'pointer' }}
               >
-                <title>{`Horizontal Wire: X${row.num} (Knuckles to Elbow Row ${row.num}/24)`}</title>
+                <title>{`Horizontal Wire: ${row.num} [Row ${row.num}/10 Knuckles-to-Elbow]`}</title>
+                
                 {/* Horizontal Line */}
                 <line
                   x1={row.span[0]}
                   y1={row.y}
                   x2={row.span[1]}
                   y2={row.y}
-                  stroke={isRowFaulted ? '#ff2a2a' : isRowSelected ? '#00f0ff' : 'rgba(0, 240, 255, 0.35)'}
-                  strokeWidth={isRowSelected ? 2.2 : 0.9}
-                  strokeDasharray={isRowSelected ? undefined : '2 2'}
+                  stroke={isRowFaulted ? '#ff2a2a' : isRowSelected ? '#00f0ff' : 'rgba(0, 240, 255, 0.45)'}
+                  strokeWidth={isRowSelected ? 2.8 : isRowFaulted ? 2.2 : 1.2}
+                  strokeDasharray={isRowSelected ? undefined : '3 2'}
                 />
-                {/* Row Number Tag */}
+
+                {/* Left Tag: Row Number 1..10 */}
                 <text
-                  x={row.span[0] - 3}
-                  y={row.y + 2.2}
+                  x={row.span[0] - 4}
+                  y={row.y + 3}
                   textAnchor="end"
-                  fill={isRowFaulted ? '#ff6b6b' : isRowSelected ? '#00f0ff' : 'rgba(0, 240, 255, 0.65)'}
-                  fontSize="5.5"
+                  fill={isRowFaulted ? '#ff6b6b' : isRowSelected ? '#00f0ff' : 'rgba(0, 240, 255, 0.85)'}
+                  fontSize="7.5"
                   fontFamily="monospace"
-                  fontWeight="600"
+                  fontWeight="bold"
                 >
-                  {`X${row.num}`}
+                  {row.num}
+                </text>
+
+                {/* Right Tag: Row Number 1..10 */}
+                <text
+                  x={row.span[1] + 4}
+                  y={row.y + 3}
+                  textAnchor="start"
+                  fill={isRowFaulted ? '#ff6b6b' : isRowSelected ? '#00f0ff' : 'rgba(0, 240, 255, 0.85)'}
+                  fontSize="7.5"
+                  fontFamily="monospace"
+                  fontWeight="bold"
+                >
+                  {row.num}
                 </text>
               </g>
             );
           })}
         </g>
 
-        {/* 3. 10 Vertical Wires from Knuckles to Elbow (Y1..Y10 on Front / Y11..Y20 on Back) */}
+        {/* 3. 6 Vertical Wires (Col A..F) */}
         <g>
           {vertWirePaths.map(col => {
-            const wireKey = `${prefix}-Y${col.num}`;
-            const isColSelected = selectedChannelId === wireKey || (isIntersectionTargeted && targetY === col.num);
+            const wireKey = `${prefix}-${col.letter}`;
+            const isColSelected = selectedWireIds.includes(wireKey);
             const isColFaulted = isChannelFaulted(wireKey);
 
             return (
@@ -1426,98 +1851,105 @@ const Hand2DDiagram: React.FC<Hand2DDiagramProps> = ({
                 key={col.id}
                 onClick={(e) => {
                   e.stopPropagation();
-                  onSelectChannel(wireKey);
+                  onToggleSelectWire(wireKey);
                   onSelectZone(palmRegion);
                 }}
                 style={{ cursor: 'pointer' }}
               >
-                <title>{`Vertical Wire: Y${col.num} (${view === 'front' ? 'Front' : 'Back'} Column ${view === 'front' ? col.num : col.num - 10}/10: Knuckles to Elbow)`}</title>
+                <title>{`Vertical Wire: ${col.letter} [Column ${col.letter}/F Knuckles-to-Elbow]`}</title>
+
                 {/* Vertical Line running continuously from Knuckles to Elbow */}
                 <path
                   d={col.pathD}
                   fill="none"
-                  stroke={isColFaulted ? '#ff2a2a' : isColSelected ? '#ffaa00' : 'rgba(255, 170, 0, 0.4)'}
-                  strokeWidth={isColSelected ? 2.2 : 1}
+                  stroke={isColFaulted ? '#ff2a2a' : isColSelected ? '#ffaa00' : 'rgba(255, 170, 0, 0.5)'}
+                  strokeWidth={isColSelected ? 2.6 : isColFaulted ? 2.0 : 1.2}
                 />
+
                 {/* Top Column Tag (above Knuckles) */}
                 <text
                   x={col.xTop}
-                  y={133}
+                  y={138}
                   textAnchor="middle"
-                  fill={isColFaulted ? '#ff6b6b' : isColSelected ? '#ffaa00' : 'rgba(255, 170, 0, 0.8)'}
-                  fontSize="5.5"
+                  fill={isColFaulted ? '#ff6b6b' : isColSelected ? '#ffaa00' : 'rgba(255, 170, 0, 0.9)'}
+                  fontSize="8"
                   fontFamily="monospace"
                   fontWeight="bold"
                 >
-                  {`Y${col.num}`}
+                  {col.letter}
                 </text>
+
                 {/* Bottom Column Tag (below Elbow) */}
                 <text
                   x={col.xBottom}
-                  y={644}
+                  y={638}
                   textAnchor="middle"
-                  fill={isColFaulted ? '#ff6b6b' : isColSelected ? '#ffaa00' : 'rgba(255, 170, 0, 0.8)'}
-                  fontSize="5.5"
+                  fill={isColFaulted ? '#ff6b6b' : isColSelected ? '#ffaa00' : 'rgba(255, 170, 0, 0.9)'}
+                  fontSize="8"
                   fontFamily="monospace"
                   fontWeight="bold"
                 >
-                  {`Y${col.num}`}
+                  {col.letter}
                 </text>
               </g>
             );
           })}
         </g>
 
-        {/* 4. Complete 24x10 Intersection Points (Knuckles to Elbow) */}
+        {/* 4. Complete 6x10 Intersection Points (A1..F10) */}
         <g>
-          {HORIZ_X_WIRES.map(row => {
-            return vertWires.map(col => {
+          {HORIZ_ROWS.map(row => {
+            return VERT_COLS.map(col => {
               const jX = row.span[0] + col.u * (row.span[1] - row.span[0]);
               const jY = row.y;
-              const isTargeted = isIntersectionTargeted && targetX === row.num && targetY === col.num;
-              const isFaulted = isIntersectionFaulted(row.num, col.num);
+              
+              const isTargeted = selectedIntersection?.colLetter === col.letter && 
+                                selectedIntersection?.rowNum === row.num;
+              
+              const isWireActive = selectedWireIds.includes(`${prefix}-${col.letter}`) && 
+                                   selectedWireIds.includes(`${prefix}-${row.num}`);
+
+              const isFaulted = isIntersectionFaulted(col.letter, row.num);
 
               return (
                 <g 
-                  key={`int-${row.num}-${col.num}`}
+                  key={`int-${col.letter}-${row.num}`}
                   onClick={(e) => {
                     e.stopPropagation();
                     onSelectIntersection({
-                      xNum: row.num,
-                      yNum: col.num,
-                      xId: `X${row.num}`,
-                      yId: `Y${col.num}`,
+                      colLetter: col.letter as VertLetter,
+                      rowNum: row.num as HorizNumber,
                       aspect: view
                     });
                     onSelectZone(row.y <= 325 ? palmRegion : forearmRegion);
                   }}
                   style={{ cursor: 'pointer' }}
                 >
-                  <title>{`Intersection (X${row.num}, Y${col.num})\nLocation: Knuckles-to-Elbow Matrix\nStatus: ${isFaulted ? 'FAULT' : 'NOMINAL'}\nAspect: ${view.toUpperCase()}`}</title>
+                  <title>{`Intersection (${col.letter}, ${row.num})\nLocation: Knuckles-to-Elbow Matrix\nStatus: ${isFaulted ? 'FAULT (<59%)' : 'NOMINAL'}\nAspect: ${view.toUpperCase()}`}</title>
                   
-                  {/* Targeted Crosshair Glow */}
-                  {isTargeted && (
+                  {/* Targeted Crosshair Reticle */}
+                  {(isTargeted || isWireActive) && (
                     <>
-                      <circle cx={jX} cy={jY} r={16} fill={`url(#glow-target-${hand}-${view})`} />
-                      <circle cx={jX} cy={jY} r={9} fill="none" stroke="#00f0ff" strokeWidth={1.8} strokeDasharray="3 2" />
-                      <line x1={jX - 12} y1={jY} x2={jX + 12} y2={jY} stroke="#00f0ff" strokeWidth={1.2} />
-                      <line x1={jX} y1={jY - 12} x2={jX} y2={jY + 12} stroke="#00f0ff" strokeWidth={1.2} />
+                      <circle cx={jX} cy={jY} r={18} fill={`url(#glow-target-${hand}-${view})`} />
+                      <circle cx={jX} cy={jY} r={10} fill="none" stroke="#00f0ff" strokeWidth={1.8} strokeDasharray="3 2" />
+                      <line x1={jX - 14} y1={jY} x2={jX + 14} y2={jY} stroke="#00f0ff" strokeWidth={1.2} />
+                      <line x1={jX} y1={jY - 14} x2={jX + 14} y2={jY} stroke="#00f0ff" strokeWidth={1.2} />
                     </>
                   )}
 
                   {/* Fault Glow */}
-                  {isFaulted && !isTargeted && (
-                    <circle cx={jX} cy={jY} r={8} fill={`url(#glow-fault-${hand}-${view})`} />
+                  {isFaulted && !isTargeted && !isWireActive && (
+                    <circle cx={jX} cy={jY} r={10} fill={`url(#glow-fault-${hand}-${view})`} />
                   )}
 
                   {/* Intersection Node Dot */}
                   <circle
                     cx={jX}
                     cy={jY}
-                    r={isTargeted ? 5 : isFaulted ? 3.2 : 1.8}
-                    fill={isFaulted ? '#ff2a2a' : isTargeted ? '#00f0ff' : 'rgba(0, 240, 255, 0.55)'}
-                    stroke={isTargeted ? '#ffffff' : '#020813'}
-                    strokeWidth={isTargeted ? 1.8 : 0.6}
+                    r={isTargeted || isWireActive ? 5.5 : isFaulted ? 4.0 : 2.4}
+                    fill={isFaulted ? '#ff2a2a' : isTargeted || isWireActive ? '#00f0ff' : 'rgba(0, 240, 255, 0.65)'}
+                    stroke={isTargeted || isWireActive ? '#ffffff' : '#020813'}
+                    strokeWidth={isTargeted || isWireActive ? 1.8 : 0.8}
                   />
                 </g>
               );
@@ -1529,16 +1961,16 @@ const Hand2DDiagram: React.FC<Hand2DDiagramProps> = ({
       {/* Upright Bottom Legend */}
       <text
         x="170"
-        y="668"
+        y="664"
         textAnchor="middle"
         fill="var(--text-muted)"
-        fontSize="9"
+        fontSize="9.5"
         letterSpacing="1"
         fontWeight="600"
       >
         {view === 'front' 
-          ? 'FRONT VIEW (PALMAR) • 24 X-WIRES × 10 Y-WIRES (Y1..Y10) [KNUCKLES TO ELBOW]' 
-          : 'BACK VIEW (DORSAL) • 24 X-WIRES × 10 Y-WIRES (Y11..Y20) [KNUCKLES TO ELBOW]'}
+          ? 'FRONT VIEW (PALMAR) • 10 HORIZONTAL (1–10) × 6 VERTICAL (A–F)' 
+          : 'BACK VIEW (DORSAL) • 10 HORIZONTAL (1–10) × 6 VERTICAL (A–F)'}
       </text>
     </svg>
   );

@@ -384,3 +384,341 @@
   color: var(--status-fault);
   font-weight: bold;
 }
+
+/* Emergency Mode & 1m 30s Countdown HUD */
+.container.emergencyMode {
+  background: radial-gradient(circle at 50% 45%, rgba(160, 15, 15, 0.45) 0%, rgba(35, 4, 4, 0.98) 75%), #050101;
+  box-shadow: inset 0 0 80px rgba(255, 30, 30, 0.45);
+  animation: emergencyGlowPulse 2.2s infinite ease-in-out;
+}
+
+@keyframes emergencyGlowPulse {
+  0%, 100% {
+    box-shadow: inset 0 0 50px rgba(255, 30, 30, 0.35);
+  }
+  50% {
+    box-shadow: inset 0 0 95px rgba(255, 30, 30, 0.65);
+  }
+}
+
+.emergencyBanner {
+  background: linear-gradient(90deg, rgba(220, 20, 20, 0.95) 0%, rgba(140, 10, 10, 0.95) 50%, rgba(220, 20, 20, 0.95) 100%);
+  border-bottom: 2px solid rgba(255, 60, 60, 0.8);
+  padding: 0.65rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: white;
+  position: relative;
+  z-index: 10;
+  box-shadow: 0 4px 20px rgba(255, 0, 0, 0.35);
+  animation: bannerPulse 2s infinite alternate;
+}
+
+@keyframes bannerPulse {
+  from {
+    filter: drop-shadow(0 0 6px rgba(255, 40, 40, 0.5));
+  }
+  to {
+    filter: drop-shadow(0 0 16px rgba(255, 40, 40, 0.9));
+  }
+}
+
+.emergencyBannerLeft {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.emergencyBadge {
+  background: #ffffff;
+  color: #c00c0c;
+  font-weight: 800;
+  font-size: 0.72rem;
+  padding: 3px 8px;
+  border-radius: 4px;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.emergencyTitle {
+  font-weight: 700;
+  font-size: 0.92rem;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.emergencyTimerWrap {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: rgba(0, 0, 0, 0.4);
+  padding: 0.3rem 0.85rem;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.emergencyTimerLabel {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.emergencyTimerValue {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 1.45rem;
+  font-weight: 900;
+  color: #fff;
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.8), 0 0 20px #ff3333;
+  letter-spacing: 1px;
+}
+
+.emergencyControls {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.emergencyBtn {
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  color: white;
+  padding: 0.35rem 0.75rem;
+  border-radius: 5px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  transition: all 0.2s;
+}
+
+.emergencyBtn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: #fff;
+}
+
+.emergencyBtnDanger {
+  background: #fff;
+  border: 1px solid #fff;
+  color: #c00c0c;
+  padding: 0.35rem 0.85rem;
+  border-radius: 5px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  transition: all 0.2s;
+}
+
+.emergencyBtnDanger:hover {
+  background: #ffd5d5;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.6);
+}
+
+.emergencyProgressBar {
+  height: 4px;
+  width: 100%;
+  background: rgba(0, 0, 0, 0.35);
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  overflow: hidden;
+}
+
+.emergencyProgressFill {
+  height: 100%;
+  background: #ffffff;
+  box-shadow: 0 0 8px #ffffff;
+  transition: width 1s linear;
+}
+
+/* Multi-Wire Selection & Inspector Controls */
+.selectionChipsWrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+  max-height: 140px;
+  overflow-y: auto;
+}
+
+.wireChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: rgba(0, 240, 255, 0.15);
+  border: 1px solid rgba(0, 240, 255, 0.4);
+  color: #00f0ff;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.wireChip:hover {
+  background: rgba(0, 240, 255, 0.25);
+  border-color: #00f0ff;
+}
+
+.wireChip.faulted {
+  background: rgba(255, 42, 42, 0.2);
+  border-color: rgba(255, 42, 42, 0.5);
+  color: #ff6b6b;
+}
+
+.wireChip.faulted:hover {
+  background: rgba(255, 42, 42, 0.3);
+  border-color: #ff2a2a;
+}
+
+.wireChipRemove {
+  background: none;
+  border: none;
+  color: inherit;
+  font-size: 0.75rem;
+  cursor: pointer;
+  padding: 0 2px;
+  line-height: 1;
+  opacity: 0.7;
+}
+
+.wireChipRemove:hover {
+  opacity: 1;
+}
+
+.multiActionGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.actionBtnPrimary {
+  background: rgba(255, 42, 42, 0.2);
+  border: 1px solid var(--status-fault);
+  color: #ff7777;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.2s;
+}
+
+.actionBtnPrimary:hover {
+  background: rgba(255, 42, 42, 0.35);
+  box-shadow: 0 0 12px rgba(255, 42, 42, 0.4);
+}
+
+.actionBtnSecondary {
+  background: rgba(0, 240, 255, 0.12);
+  border: 1px solid rgba(0, 240, 255, 0.4);
+  color: var(--status-healthy);
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.2s;
+}
+
+.actionBtnSecondary:hover {
+  background: rgba(0, 240, 255, 0.22);
+  border-color: var(--status-healthy);
+}
+
+.actionBtnMuted {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  transition: all 0.2s;
+}
+
+.actionBtnMuted:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--text-main);
+}
+
+.batchToolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 8px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+  border: 1px solid var(--border-color);
+  font-size: 0.7rem;
+}
+
+.batchToolbarBtn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 3px;
+  transition: all 0.15s;
+}
+
+.batchToolbarBtn:hover {
+  color: var(--status-healthy);
+  background: rgba(0, 240, 255, 0.1);
+}
+
+.customCheckbox {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border: 1px solid var(--border-color);
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+  display: inline-grid;
+  place-content: center;
+  margin: 0;
+  transition: all 0.2s;
+}
+
+.customCheckbox:checked {
+  background: #00f0ff;
+  border-color: #00f0ff;
+}
+
+.customCheckbox:checked::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  background: #020813;
+  clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+}
+

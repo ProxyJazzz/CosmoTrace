@@ -42,9 +42,9 @@ export const ZoneOverview: React.FC = () => {
           const healthPct = totalSensors > 0 ? Math.max(0, 100 - (brokenSensors / totalSensors) * 100).toFixed(0) : 100;
 
           return (
-            <div key={zone.id} className={`${styles.zoneCard} ${styles[status]}`}>
+            <div key={zone.id} className={`${styles.zoneCard} ${styles[status]}`} title={`${zone.label} - ${status.toUpperCase()}`}>
               <div className={styles.header}>
-                <span className={styles.name}>{zone.label}</span>
+                <span className={styles.name} title={zone.label}>{zone.label}</span>
                 <span className={`${styles.status} ${styles[status]}`}>
                   {status.toUpperCase()}
                 </span>
