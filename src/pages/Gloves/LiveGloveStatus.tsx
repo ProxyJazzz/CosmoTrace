@@ -92,6 +92,7 @@ export const LiveGloveStatus: React.FC = () => {
   const [simulatedFaults, setSimulatedFaults] = useState<Record<string, boolean>>({});
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [channelFilter, setChannelFilter] = useState<'ALL' | 'HORIZ' | 'VERT' | 'FAULTS'>('ALL');
+  const [showOsGuide, setShowOsGuide] = useState(false);
 
   // Live Serial Capacity Readings (0-100%) and Fault Sets from ESP32
   const [liveReadings, setLiveReadings] = useState<Record<string, number>>({});
@@ -487,18 +488,20 @@ export const LiveGloveStatus: React.FC = () => {
     return new OptiMeshSerial(onFaultUpdate, onStatus);
   }, [activeHand, setConnectionState]);
 
-  // Clean up serial port connection on unmount
+  // Clean up serial port connection on unmount & auto-reconnect if previously authorized
   useEffect(() => {
+    bridge.autoConnectPreviousPort(115200).catch(() => {});
+
     return () => {
       bridge.disconnect();
     };
   }, [bridge]);
 
-  const connectToESP32 = async () => {
+  const connectToESP32 = async (useVendorFilter = false) => {
     setIsConnecting(true);
     setErrorMessage(null);
     try {
-      await bridge.connect(115200);
+      await bridge.connect(115200, useVendorFilter);
     } catch (err: any) {
       console.error('[LiveGloveStatus] Serial connection failed:', err);
       const msg = err?.message || 'Failed to open Web Serial port.';
@@ -718,8 +721,17 @@ export const LiveGloveStatus: React.FC = () => {
           </label>
 
           <button 
+            className={styles.btn}
+            onClick={() => setShowOsGuide(!showOsGuide)}
+            title="Windows & Mac ESP32 port help"
+          >
+            <Info size={15} />
+            {showOsGuide ? 'Hide Guide' : 'Windows & Mac Guide'}
+          </button>
+
+          <button 
             className={`${styles.btn} ${styles.primary}`}
-            onClick={connectToESP32}
+            onClick={() => connectToESP32(false)}
             disabled={isConnecting}
           >
             <Cpu size={16} />
@@ -728,12 +740,55 @@ export const LiveGloveStatus: React.FC = () => {
         </div>
       </header>
 
+      {showOsGuide && (
+        <div style={{
+          background: 'rgba(30, 41, 59, 0.95)',
+          border: '1px solid #38bdf8',
+          color: '#e2e8f0',
+          padding: '14px 18px',
+          margin: '0.5rem 1rem 0',
+          borderRadius: '8px',
+          fontSize: '0.85rem',
+          lineHeight: '1.5',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+            <strong style={{ color: '#38bdf8', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.95rem' }}>
+              <Info size={18} /> ESP32 Serial Port Compatibility Guide (Windows & macOS)
+            </strong>
+            <button 
+              onClick={() => setShowOsGuide(false)}
+              style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontWeight: 'bold', fontSize: '1rem' }}
+            >
+              ✕
+            </button>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginTop: '8px' }}>
+            <div style={{ background: 'rgba(15, 23, 42, 0.6)', padding: '10px 12px', borderRadius: '6px', borderLeft: '3px solid #60a5fa' }}>
+              <strong style={{ color: '#60a5fa', fontSize: '0.9rem' }}>🪟 Windows PC:</strong>
+              <ul style={{ margin: '6px 0 0 16px', padding: 0 }}>
+                <li>In Chrome/Edge pop-up, select <strong>CP2102 USB to UART Bridge Controller (COM12)</strong> or <strong>CH340 (COMx)</strong>. <em>(Windows names USB chips this way — it IS your ESP32!)</em></li>
+                <li><strong>Close Arduino IDE Serial Monitor or PuTTY</strong> before clicking connect. Windows locks COM ports exclusively.</li>
+                <li>If not listed, download the <strong>CP210x Universal Driver</strong> or <strong>CH340 Driver</strong> for Windows.</li>
+              </ul>
+            </div>
+            <div style={{ background: 'rgba(15, 23, 42, 0.6)', padding: '10px 12px', borderRadius: '6px', borderLeft: '3px solid #a78bfa' }}>
+              <strong style={{ color: '#a78bfa', fontSize: '0.9rem' }}>🍏 macOS:</strong>
+              <ul style={{ margin: '6px 0 0 16px', padding: 0 }}>
+                <li>Look for <strong>/dev/cu.usbserial-...</strong> or <strong>SLAB_USBtoUART</strong> in the browser prompt.</li>
+                <li>Ensure you are using a <strong>Data Micro-USB / USB-C Cable</strong> (charge-only cables won't create a COM port).</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
+
       {errorMessage && (
         <div style={{
           background: 'rgba(255, 42, 42, 0.15)',
           border: '1px solid var(--status-fault)',
           color: '#ff6b6b',
-          padding: '8px 16px',
+          padding: '10px 16px',
           margin: '0.5rem 1rem 0',
           borderRadius: '6px',
           display: 'flex',

@@ -39,6 +39,27 @@ export interface FaultUpdatePayload {
 export type OnFaultUpdateCallback = (payload: FaultUpdatePayload) => void;
 export type OnStatusCallback = (connected: boolean, message?: string) => void;
 
+export interface ESP32DeviceFilter {
+  usbVendorId?: number;
+  usbProductId?: number;
+}
+
+/**
+ * Common ESP32 USB-to-UART Bridge & Native CDC USB Vendor IDs:
+ * - 0x10C4: Silicon Labs CP2102/CP2104 (most popular ESP32 USB-to-UART chip)
+ * - 0x1A86: QinHeng WCH CH340/CH341/CH9102 (common on budget ESP32 boards)
+ * - 0x0403: FTDI FT232R (used on FTDI ESP32 dev boards)
+ * - 0x303A: Espressif Systems (Native USB CDC on ESP32-S2/S3/C3/C6)
+ * - 0x2341: Arduino SA
+ */
+export const ESP32_USB_FILTERS: ESP32DeviceFilter[] = [
+  { usbVendorId: 0x10c4 }, // Silicon Labs CP210x
+  { usbVendorId: 0x1a86 }, // WCH CH340 / CH341
+  { usbVendorId: 0x0403 }, // FTDI
+  { usbVendorId: 0x303a }, // Espressif CDC
+  { usbVendorId: 0x2341 }, // Arduino
+];
+
 export class OptiMeshSerial {
   private port: SerialPort | null = null;
   private reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
@@ -72,20 +93,80 @@ export class OptiMeshSerial {
   }
 
   /**
-   * Opens user serial port picker and connects at target baud rate (default 115200)
+   * Attempts to auto-connect to an already authorized serial port without opening the modal dialog.
    */
-  public async connect(baudRate = 115200): Promise<boolean> {
+  public async autoConnectPreviousPort(baudRate = 115200): Promise<boolean> {
+    if (!('serial' in navigator)) return false;
+    try {
+      const serial = (navigator as unknown as { serial: Serial }).serial;
+      const ports = await serial.getPorts();
+      if (ports && ports.length > 0) {
+        this.port = ports[0];
+        await this.port.open({ baudRate });
+        this.keepReading = true;
+
+        if (this.onStatusChangeCallback) {
+          this.onStatusChangeCallback(true, 'ESP32 reconnected via saved port');
+        }
+
+        this.readLoop();
+        return true;
+      }
+    } catch (e) {
+      console.warn('[OptiMeshSerial] Auto-connect previous port failed:', e);
+    }
+    return false;
+  }
+
+  /**
+   * Opens user serial port picker and connects at target baud rate (default 115200).
+   * Fully compatible with both Windows (CP2102/CH340 COM ports) and macOS (/dev/cu.usbserial-*).
+   */
+  public async connect(baudRate = 115200, useVendorFilter = false): Promise<boolean> {
     if (!('serial' in navigator)) {
       if (this.onStatusChangeCallback) {
-        this.onStatusChangeCallback(false, 'Web Serial not supported — use Chrome or Edge.');
+        this.onStatusChangeCallback(false, 'Web Serial not supported — use Chrome, Edge, or Brave.');
       }
-      throw new Error('Web Serial API is not supported in this browser. Please use Chrome or Edge over HTTPS or localhost.');
+      throw new Error('Web Serial API is not supported in this browser. Please use Chrome, Edge, or Brave over HTTPS or localhost.');
     }
 
     try {
       const serial = (navigator as unknown as { serial: Serial }).serial;
-      this.port = await serial.requestPort();
-      await this.port.open({ baudRate });
+
+      if (useVendorFilter) {
+        try {
+          this.port = await serial.requestPort({ filters: ESP32_USB_FILTERS });
+        } catch (filterErr: any) {
+          if (filterErr?.name === 'NotFoundError') {
+            throw filterErr; // User explicitly cancelled picker
+          }
+          // Fall back to unfiltered picker if filter wasn't supported
+          this.port = await serial.requestPort();
+        }
+      } else {
+        this.port = await serial.requestPort();
+      }
+
+      const portInfo = (this.port as any).getInfo ? (this.port as any).getInfo() : {};
+      console.log('[OptiMeshSerial] Selected port info:', portInfo);
+
+      try {
+        await this.port.open({ baudRate });
+      } catch (openErr: any) {
+        console.error('[OptiMeshSerial] Port open error:', openErr);
+        const isWindows = typeof navigator !== 'undefined' && /win/i.test(navigator.userAgent || '');
+        let detailedMsg = openErr?.message || 'Failed to open serial port';
+        
+        if (openErr?.name === 'InvalidStateError' || openErr?.name === 'NetworkError' || detailedMsg.includes('Failed to open') || detailedMsg.includes('denied') || detailedMsg.includes('busy')) {
+          if (isWindows) {
+            detailedMsg = 'COM port access denied or busy. On Windows, please ensure Arduino IDE Serial Monitor, PuTTY, or other terminal tools are closed, then try again.';
+          } else {
+            detailedMsg = 'Serial port is busy or locked by another app. Please close any open serial monitor and try again.';
+          }
+        }
+        throw new Error(detailedMsg);
+      }
+
       this.keepReading = true;
 
       if (this.onStatusChangeCallback) {

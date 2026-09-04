@@ -84,14 +84,21 @@ export function useWebSerial() {
     setConnectionState('LIVE');
   }, [setSensorData, setConnectionState, addEventLogEntry, calibrationMap, gloveCalibrationMap]);
 
-  const connectSerial = useCallback(async (baudRate = 115200) => {
+  const [serialError, setSerialError] = useState<string | null>(null);
+
+  const connectSerial = useCallback(async (baudRate = 115200, useVendorFilter = false) => {
+    setSerialError(null);
     if (!serialRef.current) {
-      serialRef.current = new OptiMeshSerial(handleFaultUpdate, (connected) => {
+      serialRef.current = new OptiMeshSerial(handleFaultUpdate, (connected, msg) => {
         setIsConnected(connected);
         if (connected) {
           setConnectionState('LIVE');
+          setSerialError(null);
         } else {
           setConnectionState('DISCONNECTED');
+          if (msg && msg !== 'ESP32 disconnected') {
+            setSerialError(msg);
+          }
         }
       });
     } else {
@@ -99,9 +106,12 @@ export function useWebSerial() {
     }
 
     try {
-      return await serialRef.current.connect(baudRate);
-    } catch (err) {
+      const success = await serialRef.current.connect(baudRate, useVendorFilter);
+      return success;
+    } catch (err: any) {
       console.error('Serial connection failed:', err);
+      const errMsg = err?.message || 'Failed to open serial port.';
+      setSerialError(errMsg);
       setIsConnected(false);
       setConnectionState('DISCONNECTED');
       return false;
@@ -112,20 +122,37 @@ export function useWebSerial() {
     if (serialRef.current) {
       await serialRef.current.disconnect();
       setIsConnected(false);
+      setSerialError(null);
       setConnectionState('DISCONNECTED');
     }
   }, [setConnectionState]);
 
   useEffect(() => {
+    // Attempt auto-connect if previous port exists
+    if (!serialRef.current) {
+      const serial = new OptiMeshSerial(handleFaultUpdate, (connected) => {
+        setIsConnected(connected);
+        if (connected) {
+          setConnectionState('LIVE');
+        } else {
+          setConnectionState('DISCONNECTED');
+        }
+      });
+      serialRef.current = serial;
+      serial.autoConnectPreviousPort(115200).catch(() => {});
+    }
+
     return () => {
       if (serialRef.current) {
         serialRef.current.disconnect();
       }
     };
-  }, []);
+  }, [handleFaultUpdate, setConnectionState]);
 
   return {
     isConnected,
+    serialError,
+    setSerialError,
     connectSerial,
     disconnectSerial
   };
