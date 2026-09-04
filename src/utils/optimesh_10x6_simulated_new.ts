@@ -304,16 +304,18 @@ export class OptiMeshSerial {
           readings[`R${rowNum}`] = numVal;
           readings[`${rowNum}`] = numVal;
 
+          // If percentage reading < 59
           if (numVal < FAULT_THRESHOLD_PERCENT) {
             rowFaults.add(stdKey);
             rowFaults.add(`${rowNum}`);
+            rowFaults.add(`R${rowNum}`);
           }
         }
         continue;
       }
 
-      // Match keys like "CA".."CF", "Col A".."Col F", "A".."F"
-      const colMatch = key.match(/^(?:C|Col\s*)([A-F])$/i);
+      // Match keys like "CA".."CF", "Col A".."Col F", "A".."F", "CC"
+      const colMatch = key.match(/^(?:C|Col\s*)?([A-F])$/i);
       if (colMatch) {
         const colLetter = colMatch[1].toUpperCase();
         const stdKey = `Col ${colLetter}`;
@@ -324,6 +326,7 @@ export class OptiMeshSerial {
         if (numVal < FAULT_THRESHOLD_PERCENT) {
           colFaults.add(stdKey);
           colFaults.add(colLetter);
+          colFaults.add(`C${colLetter}`);
         }
         continue;
       }
@@ -338,6 +341,7 @@ export class OptiMeshSerial {
         if (numVal < FAULT_THRESHOLD_PERCENT) {
           rowFaults.add(stdKey);
           rowFaults.add(`${plainNum}`);
+          rowFaults.add(`R${plainNum}`);
         }
         continue;
       }
@@ -352,45 +356,100 @@ export class OptiMeshSerial {
         if (numVal < FAULT_THRESHOLD_PERCENT) {
           colFaults.add(stdKey);
           colFaults.add(colLetter);
+          colFaults.add(`C${colLetter}`);
         }
         continue;
       }
     }
 
-    // Also parse explicit faults array if provided by firmware
+    // Parse explicit faults array (e.g. "faults": ["R4", "CC"] or ["R4", "C4"] or { rows: [...], cols: [...] })
     if (parsed.faults) {
-      if (Array.isArray(parsed.faults.rows)) {
-        parsed.faults.rows.forEach((r: any) => {
-          const rNum = parseInt(r, 10);
-          if (!isNaN(rNum)) {
+      const itemsToProcess: string[] = [];
+
+      if (Array.isArray(parsed.faults)) {
+        parsed.faults.forEach((item: any) => {
+          if (typeof item === 'string' || typeof item === 'number') {
+            itemsToProcess.push(String(item).trim());
+          }
+        });
+      } else if (typeof parsed.faults === 'object') {
+        if (Array.isArray(parsed.faults.rows)) {
+          parsed.faults.rows.forEach((r: any) => itemsToProcess.push(`R${r}`));
+        }
+        if (Array.isArray(parsed.faults.cols)) {
+          parsed.faults.cols.forEach((c: any) => itemsToProcess.push(`C${c}`));
+        }
+      }
+
+      itemsToProcess.forEach(str => {
+        const uppercaseStr = str.toUpperCase();
+
+        // 1) Match combined point e.g. "C4", "B8", "D10"
+        const comboMatch = uppercaseStr.match(/^(?:C|COL\s*)?([A-F])(?:R|ROW\s*)?(\d+)$/i);
+        if (comboMatch) {
+          const colLetter = comboMatch[1].toUpperCase();
+          const rowNum = parseInt(comboMatch[2], 10);
+          if (rowNum >= 1 && rowNum <= 10) {
+            rowFaults.add(`Row ${rowNum}`);
+            rowFaults.add(`${rowNum}`);
+            rowFaults.add(`R${rowNum}`);
+
+            colFaults.add(`Col ${colLetter}`);
+            colFaults.add(colLetter);
+            colFaults.add(`C${colLetter}`);
+
+            pointFaults.add(`${colLetter}${rowNum}`);
+            pointFaults.add(`(${colLetter}, ${rowNum})`);
+            pointFaults.add(`INT-${colLetter}-${rowNum}`);
+            pointFaults.add(`INT-L-${colLetter}-${rowNum}`);
+            pointFaults.add(`INT-R-${colLetter}-${rowNum}`);
+          }
+          return;
+        }
+
+        // 2) Match Row strings e.g. "R4", "Row 4", "Row4", "4"
+        const rowMatch = uppercaseStr.match(/^(?:R|ROW\s*)?(\d+)$/i);
+        if (rowMatch) {
+          const rNum = parseInt(rowMatch[1], 10);
+          if (rNum >= 1 && rNum <= 10) {
             rowFaults.add(`Row ${rNum}`);
             rowFaults.add(`${rNum}`);
+            rowFaults.add(`R${rNum}`);
           }
-        });
-      }
-      if (Array.isArray(parsed.faults.cols)) {
-        parsed.faults.cols.forEach((c: any) => {
-          const cStr = String(c).toUpperCase();
-          if (/^[A-F]$/.test(cStr)) {
-            colFaults.add(`Col ${cStr}`);
-            colFaults.add(cStr);
+          return;
+        }
+
+        // 3) Match Col strings e.g. "CC", "Col C", "ColC", "CA".."CF", "C", "A".."F"
+        const colMatch = uppercaseStr.match(/^(?:C|COL\s*)?([A-F]+)$/i);
+        if (colMatch) {
+          // If "CC" or "CA", take the last letter as letter code
+          const rawLetters = colMatch[1].toUpperCase();
+          const cLetter = rawLetters[rawLetters.length - 1];
+          if (/^[A-F]$/.test(cLetter)) {
+            colFaults.add(`Col ${cLetter}`);
+            colFaults.add(cLetter);
+            colFaults.add(`C${cLetter}`);
           }
-        });
-      }
+          return;
+        }
+      });
     }
 
     // Generate intersection point faults for all faulted row/col combinations
     colFaults.forEach(c => {
-      const cLetter = c.replace(/^(?:Col\s*|C)/i, '').toUpperCase();
-      if (!/^[A-F]$/.test(cLetter)) return;
+      const cLetter = c.replace(/^(?:Col\s*|C)/gi, '').trim().toUpperCase();
+      const lastLetter = cLetter.length > 0 ? cLetter[cLetter.length - 1] : '';
+      if (!/^[A-F]$/.test(lastLetter)) return;
 
       rowFaults.forEach(r => {
-        const rNum = r.replace(/^(?:Row\s*|R)/i, '');
+        const rNum = r.replace(/^(?:Row\s*|R)/gi, '').trim();
         if (!/^\d+$/.test(rNum)) return;
 
-        pointFaults.add(`${cLetter}${rNum}`);
-        pointFaults.add(`(${cLetter}, ${rNum})`);
-        pointFaults.add(`INT-${cLetter}-${rNum}`);
+        pointFaults.add(`${lastLetter}${rNum}`);
+        pointFaults.add(`(${lastLetter}, ${rNum})`);
+        pointFaults.add(`INT-${lastLetter}-${rNum}`);
+        pointFaults.add(`INT-L-${lastLetter}-${rNum}`);
+        pointFaults.add(`INT-R-${lastLetter}-${rNum}`);
       });
     });
 

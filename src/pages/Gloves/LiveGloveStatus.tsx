@@ -472,6 +472,28 @@ export const LiveGloveStatus: React.FC = () => {
     return { total, faulted, healthy, integrityPct, isBreached, statusText };
   }, [channels, activeHand, prefix, sensorData, simulatedFaults, serialFaults, liveReadings, emergencyTimer]);
 
+  // Compute active detected puncture coordinates e.g. Point (C, 4) from R4 & CC
+  const detectedPunctures = useMemo(() => {
+    const list: { colLetter: VertLetter; rowNum: HorizNumber; rawRowAdc?: number; rawColAdc?: number }[] = [];
+    
+    VERT_LETTERS.forEach(col => {
+      HORIZ_NUMBERS.forEach(row => {
+        if (isIntersectionFaulted(col, row)) {
+          const rawRow = getWireReading(`${row}`) ?? getWireReading(`Row ${row}`) ?? getWireReading(`R${row}`);
+          const rawCol = getWireReading(col) ?? getWireReading(`Col ${col}`) ?? getWireReading(`C${col}`);
+          list.push({
+            colLetter: col,
+            rowNum: row,
+            rawRowAdc: rawRow ?? undefined,
+            rawColAdc: rawCol ?? undefined
+          });
+        }
+      });
+    });
+
+    return list;
+  }, [liveReadings, serialFaults, serialPointFaults, simulatedFaults, activeHand]);
+
   // Simulate test fault with readings dropping below 59%
   const triggerThresholdFaults = () => {
     const mockReadings: Record<string, number> = {};
@@ -1076,6 +1098,73 @@ export const LiveGloveStatus: React.FC = () => {
           </div>
 
           <div style={{ padding: '1rem', display: 'flex', flex: 1, flexDirection: 'column', gap: '1rem', overflowY: 'auto' }}>
+            {/* Live ESP32 Puncture Location Coordinates Card */}
+            {detectedPunctures.length > 0 && (
+              <div style={{
+                background: 'rgba(255, 42, 42, 0.12)',
+                border: '1.5px solid var(--status-fault)',
+                borderRadius: '8px',
+                padding: '0.85rem',
+                boxShadow: '0 0 16px rgba(255, 42, 42, 0.3)'
+              }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  color: '#ff4d4d',
+                  fontWeight: 700,
+                  fontSize: '0.85rem',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px'
+                }}>
+                  <AlertTriangle size={18} color="#ff4d4d" />
+                  <span>📍 Puncture Location Detected ({detectedPunctures.length})</span>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
+                  {detectedPunctures.map((p, idx) => (
+                    <div 
+                      key={`punc-${idx}`} 
+                      onClick={() => setSelectedIntersection({ colLetter: p.colLetter, rowNum: p.rowNum, aspect: 'front' })}
+                      style={{
+                        background: 'rgba(15, 23, 42, 0.85)',
+                        border: '1px solid rgba(255, 77, 77, 0.5)',
+                        borderRadius: '6px',
+                        padding: '10px 12px',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease'
+                      }}
+                      title="Click to view this puncture intersection on 2D Matrix"
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ color: '#ffffff', fontWeight: 800, fontSize: '1.15rem', letterSpacing: '0.5px' }}>
+                          Coordinate ({p.colLetter}, {p.rowNum})
+                        </span>
+                        <span style={{ 
+                          background: 'var(--status-fault)', 
+                          color: '#fff', 
+                          fontSize: '0.7rem', 
+                          padding: '3px 8px', 
+                          borderRadius: '4px',
+                          fontWeight: 800 
+                        }}>
+                          POINT {p.colLetter}{p.rowNum}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: '0.78rem', color: '#cbd5e1', marginTop: '5px' }}>
+                        Grid Location: <strong>Row {p.rowNum} (R{p.rowNum})</strong> &amp; <strong>Col {p.colLetter} (C{p.colLetter})</strong>
+                      </div>
+                      {(p.rawRowAdc !== undefined || p.rawColAdc !== undefined) && (
+                        <div style={{ fontSize: '0.75rem', color: '#ffaa00', marginTop: '4px', fontWeight: 600 }}>
+                          ESP32 ADC: {p.rawRowAdc !== undefined ? `R${p.rowNum} = ${p.rawRowAdc}` : ''} {p.rawColAdc !== undefined ? ` | C${p.colLetter} = ${p.rawColAdc}` : ''}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {selectedWireIds.length > 0 ? (
               /* Display Multi-Wire Selection Inspector */
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
