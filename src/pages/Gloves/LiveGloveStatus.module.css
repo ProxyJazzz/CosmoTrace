@@ -66,14 +66,18 @@
 .statusPill {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.35rem;
-  padding: 0.35rem 0.75rem;
+  padding: 0.35rem 0.85rem;
   border-radius: 20px;
   font-size: 0.75rem;
   font-weight: 600;
   background: rgba(0, 240, 255, 0.1);
   border: 1px solid rgba(0, 240, 255, 0.3);
   color: var(--status-healthy);
+  white-space: nowrap;
+  min-width: 175px;
+  transition: all 0.25s ease-in-out;
 }
 
 .statusPill.disconnected {
@@ -92,6 +96,7 @@
 .btn {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.5rem;
   background: var(--bg-panel-light);
   border: 1px solid var(--border-color);
@@ -101,7 +106,9 @@
   font-size: 0.8rem;
   cursor: pointer;
   text-decoration: none;
-  transition: all 0.2s;
+  white-space: nowrap;
+  min-width: 140px;
+  transition: all 0.2s ease-in-out;
 }
 
 .btn:hover {

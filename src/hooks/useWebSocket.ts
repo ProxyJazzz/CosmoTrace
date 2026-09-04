@@ -7,6 +7,7 @@ export function useWebSocket(url: string = 'ws://localhost:3000') {
   const wsRef = useRef<WebSocket | null>(null);
 
   useEffect(() => {
+    // If demo mode is enabled or Web Serial is currently active, do not run background WebSocket retries
     if (demoMode) {
       if (wsRef.current) {
         wsRef.current.close();
@@ -16,13 +17,14 @@ export function useWebSocket(url: string = 'ws://localhost:3000') {
     }
 
     let isConnecting = false;
-    let reconnectTimeout: number;
+    let reconnectTimeout: number | undefined;
 
     const connect = () => {
+      // Don't disturb connectionState if already LIVE via Web Serial
+      if (useAppStore.getState().connectionState === 'LIVE') return;
       if (isConnecting || wsRef.current?.readyState === WebSocket.OPEN) return;
       
       isConnecting = true;
-      setConnectionState('WAITING');
       
       try {
         const ws = new WebSocket(url);
@@ -30,7 +32,9 @@ export function useWebSocket(url: string = 'ws://localhost:3000') {
 
         ws.onopen = () => {
           isConnecting = false;
-          // State stays WAITING until first data arrives
+          if (useAppStore.getState().connectionState !== 'LIVE') {
+            setConnectionState('WAITING');
+          }
         };
 
         ws.onmessage = (event) => {
@@ -45,18 +49,15 @@ export function useWebSocket(url: string = 'ws://localhost:3000') {
 
         ws.onclose = () => {
           isConnecting = false;
-          setConnectionState('DISCONNECTED');
-          // Reconnect after 3 seconds
-          reconnectTimeout = window.setTimeout(connect, 3000);
+          // Silent retry without forcing setConnectionState('DISCONNECTED') on every tick
         };
 
         ws.onerror = () => {
-          // Handled by onclose
-          ws.close();
+          isConnecting = false;
+          try { ws.close(); } catch (e) {}
         };
       } catch (err) {
         isConnecting = false;
-        setConnectionState('DISCONNECTED');
       }
     };
 
@@ -65,7 +66,7 @@ export function useWebSocket(url: string = 'ws://localhost:3000') {
     return () => {
       if (reconnectTimeout) window.clearTimeout(reconnectTimeout);
       if (wsRef.current) {
-        wsRef.current.close();
+        try { wsRef.current.close(); } catch (e) {}
         wsRef.current = null;
       }
     };

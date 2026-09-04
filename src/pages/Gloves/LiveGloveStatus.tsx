@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   ArrowLeft, 
@@ -21,8 +21,8 @@ import {
   CheckSquare
 } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
-import { OptiMeshSerial, FAULT_THRESHOLD_PERCENT } from '../../utils/optimesh_10x6_simulated_new';
-import type { FaultUpdatePayload } from '../../utils/optimesh_10x6_simulated_new';
+import { useWebSerial } from '../../hooks/useWebSerial';
+import { FAULT_THRESHOLD_PERCENT } from '../../utils/optimesh_10x6_simulated_new';
 import { emergencyAudio } from '../../utils/emergencyAudio';
 import type { GloveCalibrationMap, GloveRegion, GloveHand, GloveFinger } from '../../types';
 import styles from './LiveGloveStatus.module.css';
@@ -78,8 +78,13 @@ export const LiveGloveStatus: React.FC = () => {
     setGloveCalibrationMap, 
     sensorData, 
     connectionState,
-    setConnectionState
+    liveReadings,
+    serialFaults,
+    serialPointFaults,
+    setLiveSerialData
   } = useAppStore();
+
+  const { connectSerial } = useWebSerial();
 
   const activeHand: GloveHand = 'left';
   
@@ -93,11 +98,6 @@ export const LiveGloveStatus: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [channelFilter, setChannelFilter] = useState<'ALL' | 'HORIZ' | 'VERT' | 'FAULTS'>('ALL');
   const [showOsGuide, setShowOsGuide] = useState(false);
-
-  // Live Serial Capacity Readings (0-100%) and Fault Sets from ESP32
-  const [liveReadings, setLiveReadings] = useState<Record<string, number>>({});
-  const [serialFaults, setSerialFaults] = useState<Set<string>>(new Set());
-  const [serialPointFaults, setSerialPointFaults] = useState<Set<string>>(new Set());
 
   // 1m 30s Emergency Simulation State & Sound
   const [emergencyTimer, setEmergencyTimer] = useState<number | null>(null);
@@ -232,8 +232,7 @@ export const LiveGloveStatus: React.FC = () => {
   // Stop Emergency Alarm
   const stopEmergencySimulation = () => {
     setSimulatedFaults({});
-    setSerialFaults(new Set());
-    setSerialPointFaults(new Set());
+    setLiveSerialData({}, new Set(), new Set());
     setSelectedIntersection(null);
     setSelectedWireIds([]);
     setEmergencyTimer(null);
@@ -415,114 +414,11 @@ export const LiveGloveStatus: React.FC = () => {
     }
   }, [searchQuery, prefix]);
 
-  // OptiMesh Serial Connection Setup with persistent useRef to prevent reconnect loops & header bar flickering
-  const serialRef = useRef<OptiMeshSerial | null>(null);
-
-  const handleFaultUpdate = useCallback((payload: FaultUpdatePayload) => {
-    const { readings, rowFaults, colFaults, pointFaults } = payload;
-    setLiveReadings(readings);
-    setSerialPointFaults(pointFaults);
-
-    const newFaultedSet = new Set<string>();
-    const activePrefix = activeHand === 'left' ? 'L' : 'R';
-
-    // Process row faults (e.g. "Row 8", "8")
-    rowFaults.forEach(rf => {
-      const rowNum = rf.replace(/^(?:Row\s*|R)/i, '');
-      if (/^\d+$/.test(rowNum)) {
-        newFaultedSet.add(`${activePrefix}-${rowNum}`);
-        newFaultedSet.add(rf);
-        newFaultedSet.add(rowNum);
-      }
-    });
-
-    // Process col faults (e.g. "Col D", "D")
-    colFaults.forEach(cf => {
-      const colLetter = cf.replace(/^(?:Col\s*|C)/i, '').toUpperCase();
-      if (/^[A-F]$/.test(colLetter)) {
-        newFaultedSet.add(`${activePrefix}-${colLetter}`);
-        newFaultedSet.add(cf);
-        newFaultedSet.add(colLetter);
-      }
-    });
-
-    // Also flag any reading whose capacity goes below 59%
-    Object.entries(readings).forEach(([key, val]) => {
-      if (typeof val === 'number' && val < FAULT_THRESHOLD_PERCENT) {
-        const rowMatch = key.match(/^(?:R|Row\s*)?(\d+)$/i);
-        if (rowMatch && parseInt(rowMatch[1], 10) >= 1 && parseInt(rowMatch[1], 10) <= 10) {
-          newFaultedSet.add(`${activePrefix}-${rowMatch[1]}`);
-          newFaultedSet.add(`Row ${rowMatch[1]}`);
-          newFaultedSet.add(rowMatch[1]);
-        }
-        const colMatch = key.match(/^(?:C|Col\s*)?([A-F])$/i);
-        if (colMatch) {
-          const letter = colMatch[1].toUpperCase();
-          newFaultedSet.add(`${activePrefix}-${letter}`);
-          newFaultedSet.add(`Col ${letter}`);
-          newFaultedSet.add(letter);
-        }
-      }
-    });
-
-    setSerialFaults(newFaultedSet);
-
-    if (newFaultedSet.size > 0) {
-      triggerAlarm();
-    }
-
-    if (useAppStore.getState().connectionState !== 'LIVE') {
-      setConnectionState('LIVE');
-    }
-  }, [activeHand, setConnectionState]);
-
-  const handleFaultUpdateRef = useRef(handleFaultUpdate);
-  useEffect(() => {
-    handleFaultUpdateRef.current = handleFaultUpdate;
-  }, [handleFaultUpdate]);
-
-  const handleStatusChange = useCallback((connected: boolean, message?: string) => {
-    if (connected) {
-      if (useAppStore.getState().connectionState !== 'LIVE') {
-        setConnectionState('LIVE');
-      }
-      setErrorMessage(null);
-    } else {
-      if (useAppStore.getState().connectionState !== 'DISCONNECTED') {
-        setConnectionState('DISCONNECTED');
-      }
-      if (message && message !== 'ESP32 disconnected') {
-        setErrorMessage(message);
-      }
-    }
-  }, [setConnectionState]);
-
-  const handleStatusChangeRef = useRef(handleStatusChange);
-  useEffect(() => {
-    handleStatusChangeRef.current = handleStatusChange;
-  }, [handleStatusChange]);
-
-  // Clean up serial port connection on unmount & auto-reconnect ONCE on mount
-  useEffect(() => {
-    const serial = new OptiMeshSerial(
-      (payload: FaultUpdatePayload) => handleFaultUpdateRef.current(payload),
-      (connected, msg) => handleStatusChangeRef.current(connected, msg)
-    );
-    serialRef.current = serial;
-    serial.autoConnectPreviousPort(115200).catch(() => {});
-
-    return () => {
-      serial.disconnect();
-      serialRef.current = null;
-    };
-  }, []);
-
   const connectToESP32 = async (useVendorFilter = false) => {
-    if (!serialRef.current) return;
     setIsConnecting(true);
     setErrorMessage(null);
     try {
-      await serialRef.current.connect(115200, useVendorFilter);
+      await connectSerial(115200, useVendorFilter);
     } catch (err: any) {
       console.error('[LiveGloveStatus] Serial connection failed:', err);
       const msg = err?.message || 'Failed to open Web Serial port.';
@@ -592,7 +488,7 @@ export const LiveGloveStatus: React.FC = () => {
     mockReadings[`Row ${faultRow}`] = Math.floor(Math.random() * 30) + 20; // 20-50%
     mockReadings[`Col ${faultCol}`] = Math.floor(Math.random() * 30) + 20; // 20-50%
 
-    setLiveReadings(mockReadings);
+    setLiveSerialData(mockReadings, new Set([`Row ${faultRow}`, `Col ${faultCol}`]), new Set([`${faultCol}${faultRow}`]));
 
     const nextFaults: Record<string, boolean> = {};
     nextFaults[`${prefix}-${faultRow}`] = true;
@@ -604,9 +500,7 @@ export const LiveGloveStatus: React.FC = () => {
 
   const clearAllFaults = () => {
     setSimulatedFaults({});
-    setSerialFaults(new Set());
-    setSerialPointFaults(new Set());
-    setLiveReadings({});
+    setLiveSerialData({}, new Set(), new Set());
     setEmergencyTimer(null);
     emergencyAudio.stopAlarmLoop();
   };
@@ -720,7 +614,7 @@ export const LiveGloveStatus: React.FC = () => {
           <div className={styles.title}>
             <Activity size={20} />
             Live 2D Status &bull; 10 Horizontal (Row 1&ndash;10) &times; 6 Vertical (Col A&ndash;F)
-            <span className={styles.badge}>Threshold: &lt; 59% Fault &bull; ESP32 Serial Ready</span>
+            <span className={styles.badge}>ESP32 Serial Ready</span>
           </div>
         </div>
 
@@ -843,10 +737,6 @@ export const LiveGloveStatus: React.FC = () => {
           <span className={styles.kpiValue}>10 Horiz (1-10) &times; 6 Vert (A-F)</span>
         </div>
         <div className={styles.kpiCard}>
-          <span className={styles.kpiLabel}>Fault Threshold</span>
-          <span className={styles.kpiValue} style={{ color: '#00f0ff' }}>&lt; 59% Light</span>
-        </div>
-        <div className={styles.kpiCard}>
           <span className={styles.kpiLabel}>Faulted Wires</span>
           <span className={`${styles.kpiValue} ${stats.faulted > 0 ? styles.fault : styles.healthy}`}>
             {stats.faulted}
@@ -877,10 +767,10 @@ export const LiveGloveStatus: React.FC = () => {
                 className={styles.tabBtn} 
                 style={{ fontSize: '0.65rem', padding: '2px 6px' }}
                 onClick={triggerThresholdFaults}
-                title="Simulate random capacity readings with faults (< 59%)"
+                title="Simulate random capacity readings with faults"
               >
                 <Zap size={12} style={{ marginRight: '2px' }} />
-                Sim &lt; 59%
+                Sim Fault
               </button>
               <button 
                 className={styles.tabBtn} 
@@ -1358,7 +1248,7 @@ export const LiveGloveStatus: React.FC = () => {
                     style={{ width: '100%' }}
                   >
                     <Zap size={14} />
-                    Simulate &lt; 59% Fault Threshold Trigger
+                    Simulate Fault Trigger
                   </button>
 
                   <button

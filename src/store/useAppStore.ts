@@ -12,6 +12,12 @@ interface AppState {
   selectedGloveSensorId: string | null;
   calibrationMap: CalibrationMap;
   gloveCalibrationMap: GloveCalibrationMap;
+
+  // Live Serial State
+  liveReadings: Record<string, number>;
+  serialFaults: Set<string>;
+  serialPointFaults: Set<string>;
+  serialErrorMessage: string | null;
   
   // Actions
   setConnectionState: (state: ConnectionState) => void;
@@ -22,6 +28,8 @@ interface AppState {
   setSelectedGloveSensorId: (id: string | null) => void;
   setCalibrationMap: (map: CalibrationMap) => void;
   setGloveCalibrationMap: (map: GloveCalibrationMap) => void;
+  setLiveSerialData: (readings: Record<string, number>, serialFaults: Set<string>, serialPointFaults: Set<string>) => void;
+  setSerialErrorMessage: (msg: string | null) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -34,7 +42,12 @@ export const useAppStore = create<AppState>((set) => ({
   calibrationMap: defaultMap as unknown as CalibrationMap,
   gloveCalibrationMap: defaultGloveMap as unknown as GloveCalibrationMap,
 
-  setConnectionState: (state) => set({ connectionState: state }),
+  liveReadings: {},
+  serialFaults: new Set<string>(),
+  serialPointFaults: new Set<string>(),
+  serialErrorMessage: null,
+
+  setConnectionState: (state) => set((prev) => prev.connectionState === state ? prev : { connectionState: state }),
   setSensorData: (data) => set({ sensorData: data }),
   addEventLogEntry: (entry) => set((state) => ({
     eventLog: [entry, ...state.eventLog].slice(0, 100)
@@ -44,4 +57,11 @@ export const useAppStore = create<AppState>((set) => ({
   setSelectedGloveSensorId: (id) => set({ selectedGloveSensorId: id }),
   setCalibrationMap: (map) => set({ calibrationMap: map }),
   setGloveCalibrationMap: (map) => set({ gloveCalibrationMap: map }),
+  setLiveSerialData: (readings, serialFaults, serialPointFaults) => set({
+    liveReadings: readings,
+    serialFaults,
+    serialPointFaults,
+    connectionState: 'LIVE'
+  }),
+  setSerialErrorMessage: (msg) => set({ serialErrorMessage: msg }),
 }));

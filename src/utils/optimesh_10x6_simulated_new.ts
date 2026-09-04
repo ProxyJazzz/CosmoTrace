@@ -407,3 +407,5 @@ export class OptiMeshSerial {
     }
   }
 }
+
+export const globalOptiMeshSerial = new OptiMeshSerial();
