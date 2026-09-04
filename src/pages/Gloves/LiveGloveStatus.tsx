@@ -1338,23 +1338,23 @@ export const LiveGloveStatus: React.FC = () => {
 // - 60 Interactive Matrix Intersections (Col A..F x Row 1..10)
 // ----------------------------------------------------------------------------------
 
-// Per-row horizontal matrix spans [leftX, rightX] calibrated to stay precisely INSIDE hand & forearm silhouettes
+// Per-row horizontal matrix spans [leftX, rightX] calibrated to stay precisely INSIDE palm & forearm silhouettes (1..10)
 const ROW_SPANS: [number, number][] = [
-  [98, 202], // Row 1: Knuckles (y=150.0)
-  [80, 212], // Row 2: Mid-Palm / Thumb web (y=202.2)
-  [84, 214], // Row 3: Lower Palm (y=254.4)
-  [92, 208], // Row 4: Wrist (y=306.7)
-  [90, 210], // Row 5: Upper Forearm (y=358.9)
-  [86, 214], // Row 6: Mid-Forearm 1 (y=411.1)
-  [83, 217], // Row 7: Mid-Forearm 2 (y=463.3)
-  [79, 221], // Row 8: Lower Forearm 1 (y=515.6)
-  [75, 225], // Row 9: Lower Forearm 2 (y=567.8)
-  [72, 228], // Row 10: Elbow (y=620.0)
+  [80, 212], // Row 1: Upper Palm (y=202.2)
+  [84, 214], // Row 2: Lower Palm (y=252.0)
+  [92, 208], // Row 3: Wrist (y=301.7)
+  [90, 210], // Row 4: Upper Forearm (y=351.5)
+  [86, 214], // Row 5: Mid-Forearm 1 (y=401.2)
+  [83, 217], // Row 6: Mid-Forearm 2 (y=451.0)
+  [79, 221], // Row 7: Lower Forearm 1 (y=500.8)
+  [75, 225], // Row 8: Lower Forearm 2 (y=550.5)
+  [72, 228], // Row 9: Elbow (y=600.3)
+  [69, 231], // Row 10: Elbow Bottom (y=650.0)
 ];
 
-// 10 Horizontal Rows (1..10) equally spaced from knuckles (y=150) to elbow (y=620)
+// 10 Horizontal Rows (1..10) starting from Upper Palm (y=202.2) down to Elbow Bottom (y=650.0)
 const HORIZ_ROWS = HORIZ_NUMBERS.map((num, idx) => {
-  const y = 150 + (idx * (620 - 150) / 9);
+  const y = 202.2 + (idx * (650.0 - 202.2) / 9);
   return {
     num,
     id: `ROW-${num}`,
@@ -1364,8 +1364,10 @@ const HORIZ_ROWS = HORIZ_NUMBERS.map((num, idx) => {
 });
 
 // 6 Vertical Columns (A..F) from knuckles to elbow
+// In Back View (flipX = true), u=1 is on screen left (little finger) and u=0 is on screen right (thumb).
+// Mapping u = j / 5 puts Column F (j=5, u=1) on screen left (little finger) and Column A (j=0, u=0) on screen right (thumb).
 const VERT_COLS = VERT_LETTERS.map((colLetter, j) => {
-  const u = j / 5; // fraction from 0 to 1
+  const u = j / 5; // u=1 for F (little finger/left), u=0 for A (thumb/right)
   return {
     letter: colLetter,
     id: `COL-${colLetter}`,
@@ -1611,11 +1613,11 @@ const Hand2DDiagram: React.FC<Hand2DDiagramProps> = ({
 
   return (
     <svg 
-      viewBox="0 0 340 680" 
+      viewBox="0 0 340 705" 
       style={{ 
         width: '100%', 
         height: '100%', 
-        maxHeight: '660px',
+        maxHeight: '680px',
         overflow: 'visible'
       }}
     >
@@ -1705,27 +1707,13 @@ const Hand2DDiagram: React.FC<Hand2DDiagramProps> = ({
                 style={{ cursor: 'pointer' }}
               >
                 <title>{`${fw.label} Vertical Wire (${fw.yWireId})`}</title>
+                {/* Finger vertical wire path */}
                 <path
                   d={fw.pathD}
                   fill="none"
                   stroke={isWireFaulted ? '#ff2a2a' : isWireSelected ? '#00f0ff' : 'rgba(0, 240, 255, 0.45)'}
                   strokeWidth={isWireSelected ? 2.5 : 1.5}
                 />
-
-                {/* 3 Equidistant Dots */}
-                {fw.dots.map(dot => (
-                  <g key={dot.segment}>
-                    <circle
-                      cx={dot.x}
-                      cy={dot.y}
-                      r={4.2}
-                      fill={isWireFaulted ? '#ff2a2a' : isWireSelected ? '#00f0ff' : 'var(--status-healthy)'}
-                      stroke="#020813"
-                      strokeWidth={1.2}
-                    />
-                    <circle cx={dot.x} cy={dot.y} r={1.5} fill="#ffffff" opacity={0.9} />
-                  </g>
-                ))}
               </g>
             );
           })}
@@ -1820,28 +1808,34 @@ const Hand2DDiagram: React.FC<Hand2DDiagramProps> = ({
                   strokeWidth={isColSelected ? 2.6 : isColFaulted ? 2.0 : 1.2}
                 />
 
-                {/* Top Column Tag (above Knuckles) */}
+                {/* Top Column Tag (above Row 1 at Palm) */}
                 <text
                   x={col.xTop}
-                  y={138}
+                  y={184}
                   textAnchor="middle"
-                  transform={flipX ? `translate(${col.xTop}, 138) scale(-1, 1) translate(${-col.xTop}, -138)` : undefined}
-                  fill={isColFaulted ? '#ff6b6b' : isColSelected ? '#ffaa00' : 'rgba(255, 170, 0, 0.9)'}
-                  fontSize="8"
+                  transform={flipX ? `translate(${col.xTop}, 184) scale(-1, 1) translate(${-col.xTop}, -184)` : undefined}
+                  fill={isColFaulted ? '#ff6b6b' : isColSelected ? '#ffaa00' : '#ffaa00'}
+                  stroke="#020813"
+                  strokeWidth="2.5"
+                  paintOrder="stroke fill"
+                  fontSize="8.5"
                   fontFamily="monospace"
                   fontWeight="bold"
                 >
                   {col.letter}
                 </text>
 
-                {/* Bottom Column Tag (below Elbow) */}
+                {/* Bottom Column Tag (below Row 10 at Elbow) */}
                 <text
                   x={col.xBottom}
-                  y={638}
+                  y={668}
                   textAnchor="middle"
-                  transform={flipX ? `translate(${col.xBottom}, 638) scale(-1, 1) translate(${-col.xBottom}, -638)` : undefined}
-                  fill={isColFaulted ? '#ff6b6b' : isColSelected ? '#ffaa00' : 'rgba(255, 170, 0, 0.9)'}
-                  fontSize="8"
+                  transform={flipX ? `translate(${col.xBottom}, 668) scale(-1, 1) translate(${-col.xBottom}, -668)` : undefined}
+                  fill={isColFaulted ? '#ff6b6b' : isColSelected ? '#ffaa00' : '#ffaa00'}
+                  stroke="#020813"
+                  strokeWidth="2.5"
+                  paintOrder="stroke fill"
+                  fontSize="8.5"
                   fontFamily="monospace"
                   fontWeight="bold"
                 >
@@ -1917,7 +1911,7 @@ const Hand2DDiagram: React.FC<Hand2DDiagramProps> = ({
       {/* Upright Bottom Legend */}
       <text
         x="170"
-        y="664"
+        y="692"
         textAnchor="middle"
         fill="var(--text-muted)"
         fontSize="9.5"
