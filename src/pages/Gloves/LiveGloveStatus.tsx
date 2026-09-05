@@ -22,7 +22,6 @@ import {
 } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
 import { useWebSerial } from '../../hooks/useWebSerial';
-import { FAULT_THRESHOLD_PERCENT } from '../../utils/optimesh_10x6_simulated_new';
 import { emergencyAudio } from '../../utils/emergencyAudio';
 import type { GloveCalibrationMap, GloveRegion, GloveHand, GloveFinger } from '../../types';
 import styles from './LiveGloveStatus.module.css';
@@ -122,19 +121,26 @@ export const LiveGloveStatus: React.FC = () => {
     return typeof val === 'number' ? val : null;
   };
 
-  // Helper to check if a specific channel or wire is faulted (< 59% reading or explicitly faulted)
+  // Helper to check if a specific channel or wire is faulted (via ESP32 JSON payload or simulation)
   const isChannelFaulted = (channelId: string): boolean => {
+    // Disable fault detection on fingers
+    if (
+      channelId.includes('finger') || 
+      channelId.includes('thumb') || 
+      channelId.includes('index') || 
+      channelId.includes('middle') || 
+      channelId.includes('ring') || 
+      channelId.includes('little') || 
+      /^[LR]-Y-/.test(channelId)
+    ) {
+      return false;
+    }
+
     if (simulatedFaults[channelId]) return true;
     if (serialFaults.has(channelId)) return true;
 
     const wireTag = channelId.replace(/^[^-]+-/, '');
     if (serialFaults.has(wireTag) || serialFaults.has(`Row ${wireTag}`) || serialFaults.has(`Col ${wireTag}`)) {
-      return true;
-    }
-
-    // Check reading < 59%
-    const reading = getWireReading(wireTag);
-    if (reading !== null && reading < FAULT_THRESHOLD_PERCENT) {
       return true;
     }
 
@@ -166,21 +172,6 @@ export const LiveGloveStatus: React.FC = () => {
               serialPointFaults.has(`${col}${row}`) || 
               serialPointFaults.has(`INT-${col}-${row}`)) {
             return true;
-          }
-        }
-      }
-
-      // Finger wire aliases
-      const fingerMatch = channelId.match(/^[LR]-Y-(TH|IF|MF|RF|LF)$/);
-      if (fingerMatch) {
-        const fingerMap: Record<string, string> = { 'TH': 'A', 'IF': 'B', 'MF': 'C', 'RF': 'D', 'LF': 'E' };
-        const col = fingerMap[fingerMatch[1]];
-        if (col) {
-          for (let row = 1; row <= 10; row++) {
-            if (simulatedFaults[`INT-${handPrefix}-${col}-${row}`] || 
-                serialPointFaults.has(`${col}${row}`)) {
-              return true;
-            }
           }
         }
       }
@@ -494,8 +485,8 @@ export const LiveGloveStatus: React.FC = () => {
     return list;
   }, [liveReadings, serialFaults, serialPointFaults, simulatedFaults, activeHand]);
 
-  // Simulate test fault with readings dropping below 59%
-  const triggerThresholdFaults = () => {
+  // Simulate ESP32 test fault
+  const triggerSimulatedFault = () => {
     const mockReadings: Record<string, number> = {};
     for (let r = 1; r <= 10; r++) {
       mockReadings[`Row ${r}`] = Math.floor(Math.random() * 30) + 70; // healthy 70-100%
@@ -504,11 +495,11 @@ export const LiveGloveStatus: React.FC = () => {
       mockReadings[`Col ${c}`] = Math.floor(Math.random() * 30) + 70; // healthy 70-100%
     }
 
-    // Drop 2 random wires below 59% (e.g. 25-45%)
+    // Drop 2 random wires below 20% (e.g. 5-15%)
     const faultRow = Math.floor(Math.random() * 10) + 1;
     const faultCol = VERT_LETTERS[Math.floor(Math.random() * VERT_LETTERS.length)];
-    mockReadings[`Row ${faultRow}`] = Math.floor(Math.random() * 30) + 20; // 20-50%
-    mockReadings[`Col ${faultCol}`] = Math.floor(Math.random() * 30) + 20; // 20-50%
+    mockReadings[`Row ${faultRow}`] = Math.floor(Math.random() * 10) + 5; // 5-15%
+    mockReadings[`Col ${faultCol}`] = Math.floor(Math.random() * 10) + 5; // 5-15%
 
     setLiveSerialData(mockReadings, new Set([`Row ${faultRow}`, `Col ${faultCol}`]), new Set([`${faultCol}${faultRow}`]));
 
@@ -577,8 +568,8 @@ export const LiveGloveStatus: React.FC = () => {
                   BREACH DETECTED: FAULT ON WIRES <strong>[{allFaultedWires.map(w => {
                     const tag = w.replace(/^[^-]+-/, '');
                     const reading = getWireReading(tag);
-                    return reading !== null ? `${tag} (${reading}%)` : tag;
-                  }).join(', ')}]</strong> &bull; {stats.faulted} FAULTED WIRES (&lt; 59% CAPACITY)
+                    return reading !== null ? `${tag} (${reading} ADC)` : tag;
+                  }).join(', ')}]</strong> &bull; {stats.faulted} FAULTED WIRES (ESP32 REPORTED)
                 </span>
               ) : selectedIntersection ? (
                 <span>
@@ -788,7 +779,7 @@ export const LiveGloveStatus: React.FC = () => {
               <button 
                 className={styles.tabBtn} 
                 style={{ fontSize: '0.65rem', padding: '2px 6px' }}
-                onClick={triggerThresholdFaults}
+                onClick={triggerSimulatedFault}
                 title="Simulate random capacity readings with faults"
               >
                 <Zap size={12} style={{ marginRight: '2px' }} />
@@ -998,10 +989,10 @@ export const LiveGloveStatus: React.FC = () => {
                             fontWeight: 700,
                             padding: '1px 5px',
                             borderRadius: '3px',
-                            background: reading < FAULT_THRESHOLD_PERCENT ? 'rgba(255,42,42,0.25)' : 'rgba(0,240,255,0.15)',
-                            color: reading < FAULT_THRESHOLD_PERCENT ? '#ff6b6b' : 'var(--status-healthy)'
+                            background: faulted ? 'rgba(255,42,42,0.25)' : 'rgba(0,240,255,0.15)',
+                            color: faulted ? '#ff6b6b' : 'var(--status-healthy)'
                           }}>
-                            {reading}%
+                            {reading}
                           </span>
                         )}
                       </div>
@@ -1048,7 +1039,7 @@ export const LiveGloveStatus: React.FC = () => {
 
             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
               <Info size={14} />
-              10 Horizontal (Row 1&ndash;10) &bull; 6 Vertical (Col A&ndash;F) &bull; Fault triggers when reading &lt; 59%
+              10 Horizontal (Row 1&ndash;10) &bull; 6 Vertical (Col A&ndash;F) &bull; ESP32 Live Telemetry Fault Status
             </div>
           </div>
 
@@ -1199,7 +1190,7 @@ export const LiveGloveStatus: React.FC = () => {
                         >
                           <span>{isHoriz ? `Row ${tag}` : `Col ${tag}`}</span>
                           {reading !== null && (
-                            <span style={{ fontWeight: 700, fontSize: '0.62rem' }}>[{reading}%]</span>
+                            <span style={{ fontWeight: 700, fontSize: '0.62rem' }}>[{reading}]</span>
                           )}
                           <span style={{ fontSize: '0.6rem', opacity: 0.8 }}>({faulted ? 'FAULT' : 'OK'})</span>
                           <button 
@@ -1332,7 +1323,7 @@ export const LiveGloveStatus: React.FC = () => {
                 {/* Preset quick actions */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', width: '100%' }}>
                   <button
-                    onClick={triggerThresholdFaults}
+                    onClick={triggerSimulatedFault}
                     className={styles.actionBtnPrimary}
                     style={{ width: '100%' }}
                   >
@@ -1930,7 +1921,7 @@ const Hand2DDiagram: React.FC<Hand2DDiagramProps> = ({
                   }}
                   style={{ cursor: 'pointer' }}
                 >
-                  <title>{`Intersection (${col.letter}, ${row.num})\nLocation: Knuckles-to-Elbow Matrix\nStatus: ${isFaulted ? 'FAULT (<59%)' : 'NOMINAL'}\nAspect: ${view.toUpperCase()}`}</title>
+                  <title>{`Intersection (${col.letter}, ${row.num})\nLocation: Knuckles-to-Elbow Matrix\nStatus: ${isFaulted ? 'FAULT (ESP32 REPORTED)' : 'NOMINAL'}\nAspect: ${view.toUpperCase()}`}</title>
                   
                   {/* Targeted Crosshair Reticle */}
                   {(isTargeted || isWireActive) && (

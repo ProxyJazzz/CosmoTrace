@@ -4,7 +4,6 @@ import type { SensorData, RawData, PerChannelData, ZoneStatus } from '../types';
 
 const NORMAL_MIN = 400;
 const NORMAL_MAX = 600;
-const FAULT_THRESHOLD = 100;
 const SIMULATION_INTERVAL = 1000; // 1 second updates
 
 export function useSimulator() {
@@ -61,11 +60,7 @@ export function useSimulator() {
         let isBroken = brokenSet.has(id);
         
         if (isBroken) {
-          // Drop reading below threshold
-          currentValues[id] = Math.max(0, currentValues[id] - 50); 
-          if (currentValues[id] > FAULT_THRESHOLD) {
-             currentValues[id] = Math.floor(Math.random() * 90); // force below threshold
-          }
+          currentValues[id] = Math.floor(Math.random() * 50); 
         } else {
           // Normal drift
           currentValues[id] += (Math.random() - 0.5) * 20;
@@ -75,7 +70,7 @@ export function useSimulator() {
         const reading = Math.round(currentValues[id]);
         raw[id] = reading;
         
-        const status = reading < FAULT_THRESHOLD ? 'BROKEN' : 'OK';
+        const status = isBroken ? 'BROKEN' : 'OK';
         perChannel[id] = status;
 
         if (status === 'BROKEN') {

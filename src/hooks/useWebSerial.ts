@@ -32,9 +32,10 @@ export function useWebSerial() {
 
       Object.entries(readings).forEach(([key, value]) => {
         raw[key] = value;
-        const isFaulted = (rowFaults && rowFaults.has(key)) || 
-                          (colFaults && colFaults.has(key)) || 
-                          value < 59;
+        const isFaulted = Boolean(
+          (rowFaults && rowFaults.has(key)) || 
+          (colFaults && colFaults.has(key))
+        );
         
         perChannel[key] = isFaulted ? 'BROKEN' : 'OK';
         if (isFaulted) {

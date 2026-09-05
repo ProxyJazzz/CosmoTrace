@@ -4,21 +4,16 @@
  * OptiMesh 10x6 Web Serial Bridge (v3 - Capacity & Multi-Wire Fault Model)
  *
  * Connects to ESP32 streaming 10 Horizontal (Row 1-10) x 6 Vertical (Col A-F)
- * light-intensity percentage readings (0-100%).
- *
- * Fault threshold: reading < 59% = FAULT.
+ * telemetry readings and direct JSON fault telemetry.
  *
  * Emits payload shape:
  * {
- *   readings: { "Row 1": 87, "Row 8": 32, "Col A": 78, "Col B": 33, ... },
- *   rowFaults: Set(["Row 8", "Row 10"]),
- *   colFaults: Set(["Col B", "Col D"]),
- *   pointFaults: Set(["B8", "D10", ...])
+ *   readings: { "Row 1": 3702, "Row 8": 3758, "Col A": 3911, "Col B": 3691, ... },
+ *   rowFaults: Set(["Row 4"]),
+ *   colFaults: Set(["Col C"]),
+ *   pointFaults: Set(["C4"])
  * }
  */
-
-export const FAULT_THRESHOLD_PERCENT = 59;
-export const FAULT_THRESHOLD = 59;
 
 export interface ChannelEntry {
   firmwareKey: string;
@@ -303,13 +298,6 @@ export class OptiMeshSerial {
           readings[stdKey] = numVal;
           readings[`R${rowNum}`] = numVal;
           readings[`${rowNum}`] = numVal;
-
-          // If percentage reading < 59
-          if (numVal < FAULT_THRESHOLD_PERCENT) {
-            rowFaults.add(stdKey);
-            rowFaults.add(`${rowNum}`);
-            rowFaults.add(`R${rowNum}`);
-          }
         }
         continue;
       }
@@ -322,12 +310,6 @@ export class OptiMeshSerial {
         readings[stdKey] = numVal;
         readings[`C${colLetter}`] = numVal;
         readings[colLetter] = numVal;
-
-        if (numVal < FAULT_THRESHOLD_PERCENT) {
-          colFaults.add(stdKey);
-          colFaults.add(colLetter);
-          colFaults.add(`C${colLetter}`);
-        }
         continue;
       }
 
@@ -338,11 +320,6 @@ export class OptiMeshSerial {
         readings[stdKey] = numVal;
         readings[`R${plainNum}`] = numVal;
         readings[`${plainNum}`] = numVal;
-        if (numVal < FAULT_THRESHOLD_PERCENT) {
-          rowFaults.add(stdKey);
-          rowFaults.add(`${plainNum}`);
-          rowFaults.add(`R${plainNum}`);
-        }
         continue;
       }
 
@@ -353,11 +330,6 @@ export class OptiMeshSerial {
         readings[stdKey] = numVal;
         readings[`C${colLetter}`] = numVal;
         readings[colLetter] = numVal;
-        if (numVal < FAULT_THRESHOLD_PERCENT) {
-          colFaults.add(stdKey);
-          colFaults.add(colLetter);
-          colFaults.add(`C${colLetter}`);
-        }
         continue;
       }
     }
