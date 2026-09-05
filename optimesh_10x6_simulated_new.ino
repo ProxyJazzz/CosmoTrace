@@ -1,326 +1,381 @@
 // ============================================================
-// OptiMesh EVA — Auto-Calibrating Detection Firmware (v4, final)
-// Matches your exact hardware: MUX1 (GPIO34) = R1-R8,
-// MUX2 (GPIO35) = R9,R10,CA-CF, shared select pins GPIO16-19.
+// OptiMesh EVA - FINAL Adaptive Fiber Fault Detector
 //
-// KEY CHANGE FROM v2: instead of trusting hardcoded
-// ambientBaseline[] and expectedSignal[] values captured in a
-// separate session (which may not match today's actual fiber
-// contact quality), this firmware calibrates BOTH automatically
-// every time it boots -- using whatever physical contact/
-// alignment exists RIGHT NOW as the working baseline.
+// 16 LDRs through 2 x 16-channel analog multiplexers
 //
-// This is more robust for a demo where you may not have time to
-// physically inspect/reseat every fiber beforehand: the system
-// adapts to today's real coupling quality instead of assuming
-// yesterday's numbers still apply.
+// MUX1 SIG -> GPIO34 : R1-R8
+// MUX2 SIG -> GPIO35 : R9-R10, CA-CF
 //
-// NEW IN v4: the JSON output now includes a "calibration" block
-// so your WEBSITE can display calibration health directly
-// (which sensors are saturated/weak), not just Arduino IDE's
-// Serial Monitor. This is computed once at boot and stays fixed
-// for the session (it describes the calibration quality, not a
-// live reading), so your frontend can show a one-time "sensor
-// health" panel if useful.
+// S0 = GPIO16
+// S1 = GPIO17
+// S2 = GPIO18
+// S3 = GPIO19
 //
-// BOOT SEQUENCE:
-// 1. Prompts you to make sure fiber-end LEDs are OFF, waits, then
-//    captures ambientBaseline[] (same as the standalone
-//    calibration tool did, just built into main firmware now).
-// 2. Prompts you to turn fiber-end LEDs ON, waits, then captures
-//    expectedSignal[] = (fiber-ON reading - ambientBaseline) for
-//    each sensor automatically.
-// 3. Then runs normal detection using these freshly-measured
-//    values, with the same rolling-baseline + debounce logic
-//    from v2 layered on top for ongoing stability.
+// JSON output format:
 //
-// IMPORTANT: if a sensor is SATURATED (fiber-ON reading pinned
-// at/near 4095) during this boot calibration, its expectedSignal
-// will be based on a compressed/clipped value -- meaning that
-// sensor's strength% calculation will be less sensitive to real
-// damage than a properly-exposed sensor. The firmware flags this
-// at boot AND in every JSON line's "calibration" block, so you
-// know which sensors to trust less without needing Serial Monitor
-// open during a live demo.
+// {
+//   "grid":{"rows":10,"cols":6},
+//   "readings":{
+//      "R1":3700,
+//      ...
+//      "CF":3850
+//   },
+//   "status":"OK",
+//   "faults":[]
+// }
+//
+// If faults exist:
+//
+// "status":"FAULT",
+// "faults":["R4","CC"]
 // ============================================================
 
-const int MUX1_SIG = 34;
-const int MUX2_SIG = 35;
-const int S0 = 16;
-const int S1 = 17;
-const int S2 = 18;
-const int S3 = 19;
-const int NUM_SENSORS = 16;
+#define MUX1_SIG 34
+#define MUX2_SIG 35
 
-const char *sensorNames[NUM_SENSORS] = {"R1", "R2", "R3", "R4",  "R5", "R6",
-                                        "R7", "R8", "R9", "R10", "CA", "CB",
-                                        "CC", "CD", "CE", "CF"};
+#define S0 16
+#define S1 17
+#define S2 18
+#define S3 19
 
-float ambientBaseline[NUM_SENSORS];
-float expectedSignal[NUM_SENSORS];
-bool sensorSaturated[NUM_SENSORS];
-bool sensorWeak[NUM_SENSORS];
+#define NUM_SENSORS 16
 
-const float MIN_TRUSTWORTHY_SIGNAL = 50.0; // below this, flagged "weak" at boot
-const float MIN_EXPECTED_SIGNAL_FLOOR =
-    20.0; // hard floor to avoid near-zero-divide amplification
+const char *names[NUM_SENSORS] = {"R1", "R2", "R3", "R4",  "R5", "R6",
+                                  "R7", "R8", "R9", "R10", "CA", "CB",
+                                  "CC", "CD", "CE", "CF"};
 
-const float NORMAL_THRESHOLD = 70.0;
-const float WARNING_THRESHOLD = 40.0;
-const int NUM_SAMPLES = 10;
-const int CAL_SAMPLES = 20; // more samples during boot calibration specifically
+// ------------------------------------------------------------
+// Calibration
+// ------------------------------------------------------------
 
-const float BASELINE_ADAPT_RATE = 0.02;
-const int DEBOUNCE_COUNT = 5;
-int consecutiveFaultCount[NUM_SENSORS] = {0};
-const char *debouncedStatus[NUM_SENSORS];
-const int COMMON_MODE_SENSOR_COUNT = 10;
+#define CALIBRATION_SAMPLES 50
 
-void setMuxChannel(int channel) {
-  digitalWrite(S0, channel & 0x01);
-  digitalWrite(S1, (channel >> 1) & 0x01);
-  digitalWrite(S2, (channel >> 2) & 0x01);
-  digitalWrite(S3, (channel >> 3) & 0x01);
+// Percentage drop required for suspicion
+const float DROP_LIMIT = 3.0;
+
+// Minimum ADC drop required
+const int MIN_DROP_ADC = 80;
+
+// Consecutive suspicious scans required
+#define REQUIRED_BAD_SCANS 3
+
+// ------------------------------------------------------------
+
+float baseline[NUM_SENSORS];
+int badCount[NUM_SENSORS];
+
+// ------------------------------------------------------------
+// MUX CHANNEL SELECT
+// ------------------------------------------------------------
+
+void selectChannel(int ch) {
+
+  digitalWrite(S0, ch & 1);
+  digitalWrite(S1, (ch >> 1) & 1);
+  digitalWrite(S2, (ch >> 2) & 1);
+  digitalWrite(S3, (ch >> 3) & 1);
+}
+
+// ------------------------------------------------------------
+// READ MUX
+// ------------------------------------------------------------
+
+int readMux(int muxPin, int channel) {
+
+  selectChannel(channel);
+
   delayMicroseconds(100);
+
+  // Dummy read after switching MUX
+  analogRead(muxPin);
+
+  // Actual reading
+  return analogRead(muxPin);
 }
 
-int readAveragedADC(int pin, int sampleCount) {
-  analogRead(pin);
-  long total = 0;
-  for (int i = 0; i < sampleCount; i++) {
-    total += analogRead(pin);
-    delayMicroseconds(100);
+// ------------------------------------------------------------
+// READ SENSOR
+// ------------------------------------------------------------
+
+int readSensor(int sensor) {
+
+  if (sensor < 8) {
+
+    return readMux(MUX1_SIG, sensor);
+
+  } else {
+
+    return readMux(MUX2_SIG, sensor - 8);
   }
-  return total / sampleCount;
 }
 
-void readAllSensors(int *results, int sampleCount) {
-  for (int ch = 0; ch < 8; ch++) {
-    setMuxChannel(ch);
-    results[ch] = readAveragedADC(MUX1_SIG, sampleCount);
-  }
-  for (int ch = 0; ch < 8; ch++) {
-    setMuxChannel(ch);
-    results[8 + ch] = readAveragedADC(MUX2_SIG, sampleCount);
-  }
-}
+// ------------------------------------------------------------
+// CALIBRATION
+// ------------------------------------------------------------
 
-float calculateStrength(int sensorIndex, int adcValue) {
-  float signal = adcValue - ambientBaseline[sensorIndex];
-  if (signal <= 0)
-    return 0;
-  if (expectedSignal[sensorIndex] <= 0)
-    return 0; // avoid divide-by-zero if calibration failed
-  float strength = (signal / expectedSignal[sensorIndex]) * 100.0;
-  if (strength < 0)
-    strength = 0;
-  if (strength > 100)
-    strength = 100;
-  return strength;
-}
+void calibrateSensors() {
 
-const char *getRawStatus(float strength) {
-  if (strength >= NORMAL_THRESHOLD)
-    return "NORMAL";
-  if (strength >= WARNING_THRESHOLD)
-    return "WARNING";
-  return "FAULT";
-}
-
-bool isHealthy(float strength) { return strength >= NORMAL_THRESHOLD; }
-
-void runBootCalibration() {
   Serial.println();
-  Serial.println("========================================================");
-  Serial.println("OptiMesh EVA — Auto-Calibration (runs every boot)");
-  Serial.println("========================================================");
-  Serial.println("STEP 1/2: Turn fiber-end LEDs OFF now.");
-  Serial.print("Capturing ambient baseline in 5 seconds...");
-  for (int i = 0; i < 5; i++) {
-    delay(1000);
-    Serial.print(".");
-  }
+  Serial.println("======================================");
+  Serial.println(" CALIBRATING FIBER SYSTEM");
+  Serial.println("======================================");
+  Serial.println("IMPORTANT:");
+  Serial.println("LED must be ON.");
+  Serial.println("Fiber must be GOOD / INTACT.");
+  Serial.println("Keep sensors stationary.");
   Serial.println();
 
-  int ambientReadings[NUM_SENSORS];
-  readAllSensors(ambientReadings, CAL_SAMPLES);
+  long sums[NUM_SENSORS];
+
   for (int i = 0; i < NUM_SENSORS; i++) {
-    ambientBaseline[i] = ambientReadings[i];
+
+    sums[i] = 0;
+    badCount[i] = 0;
   }
 
-  Serial.println("Ambient baseline captured.");
-  Serial.println();
-  Serial.println("STEP 2/2: Turn fiber-end LEDs ON now.");
-  Serial.print("Capturing fiber-ON signal in 8 seconds (LED warm-up time)...");
-  for (int i = 0; i < 8; i++) {
-    delay(1000);
-    Serial.print(".");
-  }
-  Serial.println();
+  // ----------------------------------------------------------
+  // Collect calibration samples
+  // ----------------------------------------------------------
 
-  int fiberOnReadings[NUM_SENSORS];
-  readAllSensors(fiberOnReadings, CAL_SAMPLES);
+  for (int sample = 0; sample < CALIBRATION_SAMPLES; sample++) {
 
-  Serial.println();
-  Serial.println("Sensor | Ambient | Fiber-ON | expectedSignal | Status");
-  Serial.println("-------|---------|----------|-----------------|--------");
-  for (int i = 0; i < NUM_SENSORS; i++) {
-    expectedSignal[i] = fiberOnReadings[i] - ambientBaseline[i];
-    sensorSaturated[i] = (fiberOnReadings[i] >= 4090);
-    sensorWeak[i] =
-        (!sensorSaturated[i] && expectedSignal[i] < MIN_TRUSTWORTHY_SIGNAL);
+    for (int sensor = 0; sensor < NUM_SENSORS; sensor++) {
 
-    // Guard against a near-zero or negative expectedSignal (would make
-    // strength% wildly oversensitive, since it's a division denominator).
-    if (expectedSignal[i] < MIN_EXPECTED_SIGNAL_FLOOR) {
-      expectedSignal[i] = MIN_EXPECTED_SIGNAL_FLOOR;
+      int value = readSensor(sensor);
+
+      sums[sensor] += value;
     }
 
-    Serial.print(sensorNames[i]);
-    Serial.print("\t");
-    Serial.print(ambientBaseline[i], 0);
-    Serial.print("\t");
-    Serial.print(fiberOnReadings[i]);
-    Serial.print("\t");
-    Serial.print(expectedSignal[i], 1);
-    Serial.print("\t");
-    if (sensorSaturated[i]) {
-      Serial.println("SATURATED -- reduced sensitivity, check fiber alignment");
-    } else if (sensorWeak[i]) {
-      Serial.println("WEAK SIGNAL -- check fiber coupling");
-    } else {
-      Serial.println("OK");
+    delay(20);
+  }
+
+  // ----------------------------------------------------------
+  // Calculate baseline
+  // ----------------------------------------------------------
+
+  Serial.println("Baseline values:");
+
+  for (int sensor = 0; sensor < NUM_SENSORS; sensor++) {
+
+    baseline[sensor] = (float)sums[sensor] / CALIBRATION_SAMPLES;
+
+    Serial.print(names[sensor]);
+    Serial.print(" = ");
+    Serial.println(baseline[sensor], 1);
+  }
+
+  Serial.println();
+  Serial.println("Calibration complete.");
+  Serial.println("Starting fault detection...");
+  Serial.println("======================================");
+  Serial.println();
+
+  delay(1000);
+}
+
+// ------------------------------------------------------------
+// PRINT JSON
+// ------------------------------------------------------------
+
+void printJSON(int values[], bool faultState) {
+
+  Serial.print("{");
+
+  // Grid
+  Serial.print("\"grid\":{");
+  Serial.print("\"rows\":10,");
+  Serial.print("\"cols\":6");
+  Serial.print("},");
+
+  // Readings
+  Serial.print("\"readings\":{");
+
+  for (int i = 0; i < NUM_SENSORS; i++) {
+
+    Serial.print("\"");
+    Serial.print(names[i]);
+    Serial.print("\":");
+    Serial.print(values[i]);
+
+    if (i < NUM_SENSORS - 1) {
+      Serial.print(",");
     }
   }
-  Serial.println();
-  Serial.println("Calibration complete. Starting live detection...");
-  Serial.println("========================================================");
-  Serial.println();
+
+  Serial.print("},");
+
+  // Status
+  Serial.print("\"status\":\"");
+
+  if (faultState) {
+    Serial.print("FAULT");
+  } else {
+    Serial.print("OK");
+  }
+
+  Serial.print("\",");
+
+  // Fault list
+  Serial.print("\"faults\":[");
+
+  bool firstFault = true;
+
+  for (int i = 0; i < NUM_SENSORS; i++) {
+
+    if (badCount[i] >= REQUIRED_BAD_SCANS) {
+
+      if (!firstFault) {
+        Serial.print(",");
+      }
+
+      Serial.print("\"");
+      Serial.print(names[i]);
+      Serial.print("\"");
+
+      firstFault = false;
+    }
+  }
+
+  Serial.print("]");
+
+  Serial.println("}");
 }
+
+// ------------------------------------------------------------
+// SETUP
+// ------------------------------------------------------------
 
 void setup() {
+
   Serial.begin(115200);
-  delay(1000);
 
   pinMode(S0, OUTPUT);
   pinMode(S1, OUTPUT);
   pinMode(S2, OUTPUT);
   pinMode(S3, OUTPUT);
-  pinMode(MUX1_SIG, INPUT);
-  pinMode(MUX2_SIG, INPUT);
+
   analogReadResolution(12);
-  analogSetPinAttenuation(MUX1_SIG, ADC_11db);
-  analogSetPinAttenuation(MUX2_SIG, ADC_11db);
 
-  for (int i = 0; i < NUM_SENSORS; i++) {
-    debouncedStatus[i] = "NORMAL";
-  }
+  delay(1000);
 
-  runBootCalibration();
+  calibrateSensors();
 }
 
+// ------------------------------------------------------------
+// MAIN DETECTOR
+// ------------------------------------------------------------
+
 void loop() {
-  int rawADC[NUM_SENSORS];
-  float strength[NUM_SENSORS];
-  const char *rawStatus[NUM_SENSORS];
 
-  readAllSensors(rawADC, NUM_SAMPLES);
-  for (int i = 0; i < NUM_SENSORS; i++) {
-    strength[i] = calculateStrength(i, rawADC[i]);
-    rawStatus[i] = getRawStatus(strength[i]);
+  int values[NUM_SENSORS];
+
+  // ----------------------------------------------------------
+  // Read all 16 sensors
+  // ----------------------------------------------------------
+
+  for (int sensor = 0; sensor < NUM_SENSORS; sensor++) {
+
+    values[sensor] = readSensor(sensor);
   }
 
-  int droppedCount = 0;
-  for (int i = 0; i < NUM_SENSORS; i++) {
-    if (strength[i] < NORMAL_THRESHOLD)
-      droppedCount++;
-  }
-  bool ambientShiftDetected = (droppedCount >= COMMON_MODE_SENSOR_COUNT);
+  // ----------------------------------------------------------
+  // Calculate average relative change
+  // ----------------------------------------------------------
 
-  if (ambientShiftDetected) {
-    for (int i = 0; i < NUM_SENSORS; i++) {
-      ambientBaseline[i] = rawADC[i];
-      consecutiveFaultCount[i] = 0;
-      debouncedStatus[i] = "NORMAL";
-    }
-  } else {
-    for (int i = 0; i < NUM_SENSORS; i++) {
-      if (isHealthy(strength[i])) {
-        ambientBaseline[i] = ambientBaseline[i] * (1.0 - BASELINE_ADAPT_RATE) +
-                             rawADC[i] * BASELINE_ADAPT_RATE;
-      }
-    }
-    for (int i = 0; i < NUM_SENSORS; i++) {
-      if (strength[i] < NORMAL_THRESHOLD) {
-        consecutiveFaultCount[i]++;
-      } else {
-        consecutiveFaultCount[i] = 0;
-        debouncedStatus[i] = "NORMAL";
-      }
-      if (consecutiveFaultCount[i] >= DEBOUNCE_COUNT) {
-        debouncedStatus[i] = rawStatus[i];
-      }
+  float totalRatio = 0;
+
+  for (int sensor = 0; sensor < NUM_SENSORS; sensor++) {
+
+    if (baseline[sensor] > 0) {
+
+      float ratio = (float)values[sensor] / baseline[sensor];
+
+      totalRatio += ratio;
     }
   }
 
-  // ---- JSON output (same shape as v1/v2) ----
-  Serial.print("{\"grid\":{\"rows\":10,\"cols\":6},");
+  float averageRatio = totalRatio / NUM_SENSORS;
 
-  Serial.print("\"readings\":{");
-  for (int i = 0; i < NUM_SENSORS; i++) {
-    Serial.print("\"");
-    Serial.print(sensorNames[i]);
-    Serial.print("\":");
-    Serial.print((int)round(strength[i]));
-    if (i < NUM_SENSORS - 1)
-      Serial.print(",");
-  }
-  Serial.print("},");
+  // ----------------------------------------------------------
+  // Check each sensor
+  // ----------------------------------------------------------
 
-  Serial.print("\"status\":{");
-  for (int i = 0; i < NUM_SENSORS; i++) {
-    Serial.print("\"");
-    Serial.print(sensorNames[i]);
-    Serial.print("\":\"");
-    Serial.print(debouncedStatus[i]);
-    Serial.print("\"");
-    if (i < NUM_SENSORS - 1)
-      Serial.print(",");
-  }
-  Serial.print("},");
+  bool anyFault = false;
 
-  Serial.print("\"raw\":{");
-  for (int i = 0; i < NUM_SENSORS; i++) {
-    Serial.print("\"");
-    Serial.print(sensorNames[i]);
-    Serial.print("\":");
-    Serial.print(rawADC[i]);
-    if (i < NUM_SENSORS - 1)
-      Serial.print(",");
-  }
-  Serial.print("},");
+  for (int sensor = 0; sensor < NUM_SENSORS; sensor++) {
 
-  // Calibration health, fixed since boot -- lets the website show
-  // sensor trust/quality without needing Serial Monitor.
-  Serial.print("\"calibration\":{");
-  for (int i = 0; i < NUM_SENSORS; i++) {
-    Serial.print("\"");
-    Serial.print(sensorNames[i]);
-    Serial.print("\":\"");
-    if (sensorSaturated[i]) {
-      Serial.print("saturated");
-    } else if (sensorWeak[i]) {
-      Serial.print("weak");
+    // --------------------------------------------------------
+    // Absolute drop
+    // --------------------------------------------------------
+
+    float drop =
+        ((baseline[sensor] - values[sensor]) / baseline[sensor]) * 100.0;
+
+    float difference = baseline[sensor] - values[sensor];
+
+    // --------------------------------------------------------
+    // Normalized ratio
+    // --------------------------------------------------------
+
+    float normalizedRatio =
+        ((float)values[sensor] / baseline[sensor]) / averageRatio;
+
+    float normalizedDrop = (1.0 - normalizedRatio) * 100.0;
+
+    // --------------------------------------------------------
+    // Suspicious decision
+    // --------------------------------------------------------
+
+    bool suspicious = false;
+
+    // Absolute drop test
+    if (drop >= DROP_LIMIT && difference >= MIN_DROP_ADC) {
+
+      suspicious = true;
+    }
+
+    // Relative sensor-to-array test
+    if (normalizedDrop >= 2.5) {
+
+      suspicious = true;
+    }
+
+    // --------------------------------------------------------
+    // Consecutive reading filter
+    // --------------------------------------------------------
+
+    if (suspicious) {
+
+      badCount[sensor]++;
+
     } else {
-      Serial.print("ok");
+
+      // Slowly recover
+      if (badCount[sensor] > 0) {
+
+        badCount[sensor]--;
+      }
     }
-    Serial.print("\"");
-    if (i < NUM_SENSORS - 1)
-      Serial.print(",");
+
+    // --------------------------------------------------------
+    // Final fault state
+    // --------------------------------------------------------
+
+    if (badCount[sensor] >= REQUIRED_BAD_SCANS) {
+
+      anyFault = true;
+    }
   }
-  Serial.print("}");
 
-  Serial.println("}");
+  // ----------------------------------------------------------
+  // SEND JSON
+  // ----------------------------------------------------------
 
-  delay(100);
+  printJSON(values, anyFault);
+
+  // ----------------------------------------------------------
+  // Scan interval
+  // ----------------------------------------------------------
+
+  delay(500);
 }

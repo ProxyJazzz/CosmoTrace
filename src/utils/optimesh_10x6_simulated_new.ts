@@ -1,35 +1,29 @@
 /// <reference types="w3c-web-serial" />
 
 /**
- * OptiMesh 10x6 Web Serial Bridge (v3 - Capacity & Multi-Wire Fault Model)
+ * OptiMesh 10x6 Web Serial Bridge (v5 — matches Adaptive Fiber Fault Detector firmware)
  *
- * Connects to ESP32 streaming 10 Horizontal (Row 1-10) x 6 Vertical (Col A-F)
- * light-intensity percentage readings (0-100%).
- *
- * Fault threshold: reading < 59% = FAULT.
+ * Matches this exact firmware JSON shape:
+ * {
+ *   "grid":{"rows":10,"cols":6},
+ *   "readings":{"R1":3700,...,"CF":3850},   // RAW ADC values, not percentages
+ *   "status":"OK",                           // single string: "OK" or "FAULT"
+ *   "faults":["R4","CC"]                     // array of sensor names currently faulted
+ * }
  *
  * Emits payload shape:
  * {
- *   readings: { "Row 1": 87, "Row 8": 32, "Col A": 78, "Col B": 33, ... },
- *   rowFaults: Set(["Row 8", "Row 10"]),
- *   colFaults: Set(["Col B", "Col D"]),
- *   pointFaults: Set(["B8", "D10", ...])
+ *   readings: { "Row 1": 3700, "Col A": 3850, ... },   // raw ADC, relabeled
+ *   overallStatus: "OK" | "FAULT",
+ *   rowFaults: Set(["Row 4"]),
+ *   colFaults: Set(["Col C"]),
+ *   pointFaults: Set(["(C, 4)"]),   // only when a row AND col are BOTH faulted together
  * }
  */
 
-export const FAULT_THRESHOLD_PERCENT = 59;
-export const FAULT_THRESHOLD = 59;
-
-export interface ChannelEntry {
-  firmwareKey: string;
-  value: number;
-  fault: boolean;
-}
-
-export type ChannelMap = Record<number | string, ChannelEntry>;
-
 export interface FaultUpdatePayload {
   readings: Record<string, number>;
+  overallStatus?: string;
   rowFaults: Set<string>;
   colFaults: Set<string>;
   pointFaults: Set<string>;
@@ -44,14 +38,6 @@ export interface ESP32DeviceFilter {
   usbProductId?: number;
 }
 
-/**
- * Common ESP32 USB-to-UART Bridge & Native CDC USB Vendor IDs:
- * - 0x10C4: Silicon Labs CP2102/CP2104 (most popular ESP32 USB-to-UART chip)
- * - 0x1A86: QinHeng WCH CH340/CH341/CH9102 (common on budget ESP32 boards)
- * - 0x0403: FTDI FT232R (used on FTDI ESP32 dev boards)
- * - 0x303A: Espressif Systems (Native USB CDC on ESP32-S2/S3/C3/C6)
- * - 0x2341: Arduino SA
- */
 export const ESP32_USB_FILTERS: ESP32DeviceFilter[] = [
   { usbVendorId: 0x10c4 }, // Silicon Labs CP210x
   { usbVendorId: 0x1a86 }, // WCH CH340 / CH341
@@ -59,6 +45,20 @@ export const ESP32_USB_FILTERS: ESP32DeviceFilter[] = [
   { usbVendorId: 0x303a }, // Espressif CDC
   { usbVendorId: 0x2341 }, // Arduino
 ];
+
+function rowKeyToLabel(key: string): string | null {
+  // "R1".."R10" -> "Row 1".."Row 10"
+  const match = key.match(/^R(\d+)$/i);
+  if (!match) return null;
+  return `Row ${parseInt(match[1], 10)}`;
+}
+
+function colKeyToLabel(key: string): string | null {
+  // "CA".."CF" -> "Col A".."Col F"
+  const match = key.match(/^C([A-F])$/i);
+  if (!match) return null;
+  return `Col ${match[1].toUpperCase()}`;
+}
 
 export class OptiMeshSerial {
   private port: SerialPort | null = null;
@@ -81,10 +81,6 @@ export class OptiMeshSerial {
   }
 
   public setFaultUpdateCallback(cb: OnFaultUpdateCallback) {
-    this.onFaultUpdateCallback = cb;
-  }
-
-  public setGridUpdateCallback(cb: any) {
     this.onFaultUpdateCallback = cb;
   }
 
@@ -120,7 +116,6 @@ export class OptiMeshSerial {
 
   /**
    * Opens user serial port picker and connects at target baud rate (default 115200).
-   * Fully compatible with both Windows (CP2102/CH340 COM ports) and macOS (/dev/cu.usbserial-*).
    */
   public async connect(baudRate = 115200, useVendorFilter = false): Promise<boolean> {
     if (!('serial' in navigator)) {
@@ -138,9 +133,8 @@ export class OptiMeshSerial {
           this.port = await serial.requestPort({ filters: ESP32_USB_FILTERS });
         } catch (filterErr: any) {
           if (filterErr?.name === 'NotFoundError') {
-            throw filterErr; // User explicitly cancelled picker
+            throw filterErr;
           }
-          // Fall back to unfiltered picker if filter wasn't supported
           this.port = await serial.requestPort();
         }
       } else {
@@ -173,7 +167,6 @@ export class OptiMeshSerial {
         this.onStatusChangeCallback(true, 'ESP32 connected (115200 baud)');
       }
 
-      // Start reading stream in background
       this.readLoop();
       return true;
     } catch (err: any) {
@@ -195,18 +188,14 @@ export class OptiMeshSerial {
     if (this.reader) {
       try {
         await this.reader.cancel();
-      } catch (e) {
-        // Ignore cancel errors
-      }
+      } catch (e) {}
       this.reader = null;
     }
 
     if (this.port) {
       try {
         await this.port.close();
-      } catch (e) {
-        // Ignore close errors
-      }
+      } catch (e) {}
       this.port = null;
     }
 
@@ -223,7 +212,6 @@ export class OptiMeshSerial {
 
     const textDecoder = new TextDecoder();
     this.reader = this.port.readable.getReader();
-
     this.lineBuffer = '';
 
     try {
@@ -234,7 +222,6 @@ export class OptiMeshSerial {
         if (value) {
           this.lineBuffer += textDecoder.decode(value, { stream: true });
           const lines = this.lineBuffer.split('\n');
-          // Keep last incomplete segment in buffer
           this.lineBuffer = lines.pop() || '';
 
           for (const line of lines) {
@@ -262,203 +249,78 @@ export class OptiMeshSerial {
   }
 
   /**
-   * Parses JSON line from ESP32:
-   * e.g. {"grid":{"rows":10,"cols":6},"readings":{"R1":87,...,"R10":45,"CA":78,...,"CF":90},"faults":{"rows":[10],"cols":["B"]}}
+   * Parses JSON line from ESP32 v5:
+   * e.g. {"grid":{"rows":10,"cols":6},"readings":{"R1":3700,...,"CF":3850},"status":"OK","faults":["R4","CC"]}
    */
   private parseLine(line: string): void {
-    if (!line.startsWith('{')) {
-      // Non-JSON debug message (e.g. "R,OptiMesh simulator ready")
-      if (line.startsWith('R,')) {
-        console.log('[ESP32 Ready]:', line.slice(2));
-      }
-      return;
-    }
+    if (!line.startsWith('{')) return; // ignore firmware's plain-text calibration/log lines
 
     let parsed: any;
     try {
       parsed = JSON.parse(line);
     } catch (e) {
-      return;
+      return; // malformed/partial line, drop silently
     }
+
+    // Only handle full sensor frames -- must have readings + faults array.
+    if (!parsed.readings || !Array.isArray(parsed.faults)) return;
 
     const readings: Record<string, number> = {};
     const rowFaults = new Set<string>();
     const colFaults = new Set<string>();
+
+    // Populate readings (raw ADC values) under friendly labels
+    for (const key of Object.keys(parsed.readings)) {
+      const rowLabel = rowKeyToLabel(key);
+      const colLabel = colKeyToLabel(key);
+      const label = rowLabel || colLabel;
+      if (!label) continue;
+      readings[label] = parsed.readings[key];
+      // Keep original key as alias for lookup compatibility
+      readings[key] = parsed.readings[key];
+    }
+
+    // Faults come ONLY from the firmware's own "faults" array -- this is
+    // the authoritative, debounced decision. Do not recompute from readings.
+    for (const faultKey of parsed.faults) {
+      const rowLabel = rowKeyToLabel(faultKey);
+      const colLabel = colKeyToLabel(faultKey);
+      if (rowLabel) {
+        rowFaults.add(rowLabel);
+        rowFaults.add(faultKey);
+        rowFaults.add(rowLabel.replace('Row ', ''));
+      } else if (colLabel) {
+        colFaults.add(colLabel);
+        colFaults.add(faultKey);
+        colFaults.add(colLabel.replace('Col ', ''));
+      }
+    }
+
+    // A true X,Y point fault only when a row AND a col are BOTH faulted
     const pointFaults = new Set<string>();
-
-    // Extract readings from parsed.readings or directly from parsed object
-    const rawReadings = parsed.readings && typeof parsed.readings === 'object' ? parsed.readings : parsed;
-
-    for (const [key, val] of Object.entries(rawReadings)) {
-      if (typeof val !== 'number') continue;
-
-      const numVal = val as number;
-
-      // Match keys like "R1".."R10", "Row 1".."Row 10", "1".."10"
-      const rowMatch = key.match(/^(?:R|Row\s*)(\d+)$/i);
-      if (rowMatch) {
-        const rowNum = parseInt(rowMatch[1], 10);
-        if (rowNum >= 1 && rowNum <= 10) {
-          const stdKey = `Row ${rowNum}`;
-          readings[stdKey] = numVal;
-          readings[`R${rowNum}`] = numVal;
-          readings[`${rowNum}`] = numVal;
-
-          // If percentage reading < 59
-          if (numVal < FAULT_THRESHOLD_PERCENT) {
-            rowFaults.add(stdKey);
-            rowFaults.add(`${rowNum}`);
-            rowFaults.add(`R${rowNum}`);
-          }
+    if (rowFaults.size > 0 && colFaults.size > 0) {
+      for (const row of rowFaults) {
+        if (!row.startsWith('Row ')) continue;
+        for (const col of colFaults) {
+          if (!col.startsWith('Col ')) continue;
+          const rowNum = row.replace('Row ', '');
+          const colLetter = col.replace('Col ', '');
+          pointFaults.add(`(${colLetter}, ${rowNum})`);
+          pointFaults.add(`${colLetter}${rowNum}`);
+          pointFaults.add(`INT-${colLetter}-${rowNum}`);
+          pointFaults.add(`INT-L-${colLetter}-${rowNum}`);
+          pointFaults.add(`INT-R-${colLetter}-${rowNum}`);
         }
-        continue;
-      }
-
-      // Match keys like "CA".."CF", "Col A".."Col F", "A".."F", "CC"
-      const colMatch = key.match(/^(?:C|Col\s*)?([A-F])$/i);
-      if (colMatch) {
-        const colLetter = colMatch[1].toUpperCase();
-        const stdKey = `Col ${colLetter}`;
-        readings[stdKey] = numVal;
-        readings[`C${colLetter}`] = numVal;
-        readings[colLetter] = numVal;
-
-        if (numVal < FAULT_THRESHOLD_PERCENT) {
-          colFaults.add(stdKey);
-          colFaults.add(colLetter);
-          colFaults.add(`C${colLetter}`);
-        }
-        continue;
-      }
-
-      // Plain number key e.g. "1".."10"
-      const plainNum = parseInt(key, 10);
-      if (!isNaN(plainNum) && plainNum >= 1 && plainNum <= 10) {
-        const stdKey = `Row ${plainNum}`;
-        readings[stdKey] = numVal;
-        readings[`R${plainNum}`] = numVal;
-        readings[`${plainNum}`] = numVal;
-        if (numVal < FAULT_THRESHOLD_PERCENT) {
-          rowFaults.add(stdKey);
-          rowFaults.add(`${plainNum}`);
-          rowFaults.add(`R${plainNum}`);
-        }
-        continue;
-      }
-
-      // Plain letter key e.g. "A".."F"
-      if (/^[A-F]$/i.test(key)) {
-        const colLetter = key.toUpperCase();
-        const stdKey = `Col ${colLetter}`;
-        readings[stdKey] = numVal;
-        readings[`C${colLetter}`] = numVal;
-        readings[colLetter] = numVal;
-        if (numVal < FAULT_THRESHOLD_PERCENT) {
-          colFaults.add(stdKey);
-          colFaults.add(colLetter);
-          colFaults.add(`C${colLetter}`);
-        }
-        continue;
       }
     }
-
-    // Parse explicit faults array (e.g. "faults": ["R4", "CC"] or ["R4", "C4"] or { rows: [...], cols: [...] })
-    if (parsed.faults) {
-      const itemsToProcess: string[] = [];
-
-      if (Array.isArray(parsed.faults)) {
-        parsed.faults.forEach((item: any) => {
-          if (typeof item === 'string' || typeof item === 'number') {
-            itemsToProcess.push(String(item).trim());
-          }
-        });
-      } else if (typeof parsed.faults === 'object') {
-        if (Array.isArray(parsed.faults.rows)) {
-          parsed.faults.rows.forEach((r: any) => itemsToProcess.push(`R${r}`));
-        }
-        if (Array.isArray(parsed.faults.cols)) {
-          parsed.faults.cols.forEach((c: any) => itemsToProcess.push(`C${c}`));
-        }
-      }
-
-      itemsToProcess.forEach(str => {
-        const uppercaseStr = str.toUpperCase();
-
-        // 1) Match combined point e.g. "C4", "B8", "D10"
-        const comboMatch = uppercaseStr.match(/^(?:C|COL\s*)?([A-F])(?:R|ROW\s*)?(\d+)$/i);
-        if (comboMatch) {
-          const colLetter = comboMatch[1].toUpperCase();
-          const rowNum = parseInt(comboMatch[2], 10);
-          if (rowNum >= 1 && rowNum <= 10) {
-            rowFaults.add(`Row ${rowNum}`);
-            rowFaults.add(`${rowNum}`);
-            rowFaults.add(`R${rowNum}`);
-
-            colFaults.add(`Col ${colLetter}`);
-            colFaults.add(colLetter);
-            colFaults.add(`C${colLetter}`);
-
-            pointFaults.add(`${colLetter}${rowNum}`);
-            pointFaults.add(`(${colLetter}, ${rowNum})`);
-            pointFaults.add(`INT-${colLetter}-${rowNum}`);
-            pointFaults.add(`INT-L-${colLetter}-${rowNum}`);
-            pointFaults.add(`INT-R-${colLetter}-${rowNum}`);
-          }
-          return;
-        }
-
-        // 2) Match Row strings e.g. "R4", "Row 4", "Row4", "4"
-        const rowMatch = uppercaseStr.match(/^(?:R|ROW\s*)?(\d+)$/i);
-        if (rowMatch) {
-          const rNum = parseInt(rowMatch[1], 10);
-          if (rNum >= 1 && rNum <= 10) {
-            rowFaults.add(`Row ${rNum}`);
-            rowFaults.add(`${rNum}`);
-            rowFaults.add(`R${rNum}`);
-          }
-          return;
-        }
-
-        // 3) Match Col strings e.g. "CC", "Col C", "ColC", "CA".."CF", "C", "A".."F"
-        const colMatch = uppercaseStr.match(/^(?:C|COL\s*)?([A-F]+)$/i);
-        if (colMatch) {
-          // If "CC" or "CA", take the last letter as letter code
-          const rawLetters = colMatch[1].toUpperCase();
-          const cLetter = rawLetters[rawLetters.length - 1];
-          if (/^[A-F]$/.test(cLetter)) {
-            colFaults.add(`Col ${cLetter}`);
-            colFaults.add(cLetter);
-            colFaults.add(`C${cLetter}`);
-          }
-          return;
-        }
-      });
-    }
-
-    // Generate intersection point faults for all faulted row/col combinations
-    colFaults.forEach(c => {
-      const cLetter = c.replace(/^(?:Col\s*|C)/gi, '').trim().toUpperCase();
-      const lastLetter = cLetter.length > 0 ? cLetter[cLetter.length - 1] : '';
-      if (!/^[A-F]$/.test(lastLetter)) return;
-
-      rowFaults.forEach(r => {
-        const rNum = r.replace(/^(?:Row\s*|R)/gi, '').trim();
-        if (!/^\d+$/.test(rNum)) return;
-
-        pointFaults.add(`${lastLetter}${rNum}`);
-        pointFaults.add(`(${lastLetter}, ${rNum})`);
-        pointFaults.add(`INT-${lastLetter}-${rNum}`);
-        pointFaults.add(`INT-L-${lastLetter}-${rNum}`);
-        pointFaults.add(`INT-R-${lastLetter}-${rNum}`);
-      });
-    });
 
     const payload: FaultUpdatePayload = {
       readings,
+      overallStatus: parsed.status, // "OK" | "FAULT"
       rowFaults,
       colFaults,
       pointFaults,
-      rawJson: parsed
+      rawJson: parsed,
     };
 
     if (this.onFaultUpdateCallback) {

@@ -1,21 +1,48 @@
 /**
- * OptiMesh 10x6 Web Serial Bridge (v3 - Capacity & Multi-Wire Fault Model)
+ * OptiMesh 10x6 Web Serial Bridge (v5 — matches Adaptive Fiber Fault Detector firmware)
  *
- * Connects to ESP32 streaming 10 Horizontal (Row 1-10) x 6 Vertical (Col A-F)
- * light-intensity percentage readings (0-100%).
+ * Matches this exact firmware JSON shape:
+ * {
+ *   "grid":{"rows":10,"cols":6},
+ *   "readings":{"R1":3700,...,"CF":3850},   // RAW ADC values, not percentages
+ *   "status":"OK",                           // single string: "OK" or "FAULT"
+ *   "faults":["R4","CC"]                     // array of sensor names currently faulted
+ * }
  *
- * Fault threshold: reading < 59% = FAULT.
+ * IMPORTANT: "readings" here are RAW ADC values (roughly 0-4095), NOT 0-100%
+ * percentages like earlier firmware versions produced. If your UI displays
+ * this number directly, label it as a raw sensor reading, not a percentage,
+ * or convert it yourself using your own baseline/range if you want a
+ * normalized display value (the firmware doesn't send one in this version).
+ *
+ * The firmware's own fault decision (dual absolute + array-relative drop
+ * test, with a gradual up/down debounce counter) is the ONLY source of
+ * truth here — this module does not recompute or second-guess it. A
+ * sensor is faulted if and only if its name appears in the "faults" array.
  *
  * Emits payload shape:
  * {
- *   readings: { "Row 1": 87, "Row 8": 32, "Col A": 78, "Col B": 33, ... },
- *   rowFaults: Set(["Row 8", "Row 10"]),
- *   colFaults: Set(["Col B", "Col D"]),
- *   pointFaults: Set(["B8", "D10", ...])
+ *   readings: { "Row 1": 3700, "Col A": 3850, ... },   // raw ADC, relabeled
+ *   overallStatus: "OK" | "FAULT",
+ *   rowFaults: Set(["Row 4"]),
+ *   colFaults: Set(["Col C"]),
+ *   pointFaults: Set(["(C, 4)"]),   // only when a row AND col are BOTH faulted together
  * }
  */
 
-export const FAULT_THRESHOLD_PERCENT = 59;
+function rowKeyToLabel(key) {
+  // "R1".."R10" -> "Row 1".."Row 10"
+  const match = key.match(/^R(\d+)$/i);
+  if (!match) return null;
+  return `Row ${parseInt(match[1], 10)}`;
+}
+
+function colKeyToLabel(key) {
+  // "CA".."CF" -> "Col A".."Col F"
+  const match = key.match(/^C([A-F])$/i);
+  if (!match) return null;
+  return `Col ${match[1].toUpperCase()}`;
+}
 
 export class OptiMeshSerial {
   constructor(onFaultUpdate, onStatusChange) {
@@ -28,10 +55,6 @@ export class OptiMeshSerial {
   }
 
   setFaultUpdateCallback(cb) {
-    this.onFaultUpdateCallback = cb;
-  }
-
-  setGridUpdateCallback(cb) {
     this.onFaultUpdateCallback = cb;
   }
 
@@ -72,19 +95,13 @@ export class OptiMeshSerial {
     this.keepReading = false;
 
     if (this.reader) {
-      try {
-        await this.reader.cancel();
-      } catch (e) {}
+      try { await this.reader.cancel(); } catch (e) {}
       this.reader = null;
     }
-
     if (this.port) {
-      try {
-        await this.port.close();
-      } catch (e) {}
+      try { await this.port.close(); } catch (e) {}
       this.port = null;
     }
-
     if (this.onStatusChangeCallback) {
       this.onStatusChangeCallback(false, 'ESP32 disconnected');
     }
@@ -122,9 +139,7 @@ export class OptiMeshSerial {
       }
     } finally {
       if (this.reader) {
-        try {
-          this.reader.releaseLock();
-        } catch (e) {}
+        try { this.reader.releaseLock(); } catch (e) {}
         this.reader = null;
       }
       this.disconnect();
@@ -132,127 +147,62 @@ export class OptiMeshSerial {
   }
 
   parseLine(line) {
-    if (!line.startsWith('{')) return;
+    if (!line.startsWith('{')) return; // ignore firmware's plain-text calibration/log lines
 
     let parsed;
     try {
       parsed = JSON.parse(line);
     } catch (e) {
-      return;
+      return; // malformed/partial line, drop silently
     }
+
+    // Only handle full sensor frames -- must have readings + faults array.
+    if (!parsed.readings || !Array.isArray(parsed.faults)) return;
 
     const readings = {};
     const rowFaults = new Set();
     const colFaults = new Set();
+
+    // Populate readings (raw ADC values) under friendly labels
+    for (const key of Object.keys(parsed.readings)) {
+      const rowLabel = rowKeyToLabel(key);
+      const colLabel = colKeyToLabel(key);
+      const label = rowLabel || colLabel;
+      if (!label) continue;
+      readings[label] = parsed.readings[key];
+    }
+
+    // Faults come ONLY from the firmware's own "faults" array -- this is
+    // the authoritative, debounced decision. Do not recompute from readings.
+    for (const faultKey of parsed.faults) {
+      const rowLabel = rowKeyToLabel(faultKey);
+      const colLabel = colKeyToLabel(faultKey);
+      if (rowLabel) rowFaults.add(rowLabel);
+      else if (colLabel) colFaults.add(colLabel);
+    }
+
+    // A true X,Y point fault only when a row AND a col are BOTH faulted
+    // (matches the line-based sensing model: a single fiber cut only
+    // gives a 1D row or column location; a genuine 2D point is only
+    // confirmed when both directions fault together).
     const pointFaults = new Set();
-
-    const rawReadings = parsed.readings && typeof parsed.readings === 'object' ? parsed.readings : parsed;
-
-    for (const [key, val] of Object.entries(rawReadings)) {
-      if (typeof val !== 'number') continue;
-
-      const numVal = val;
-
-      const rowMatch = key.match(/^(?:R|Row\s*)(\d+)$/i);
-      if (rowMatch) {
-        const rowNum = parseInt(rowMatch[1], 10);
-        if (rowNum >= 1 && rowNum <= 10) {
-          const stdKey = `Row ${rowNum}`;
-          readings[stdKey] = numVal;
-          readings[`R${rowNum}`] = numVal;
-          readings[`${rowNum}`] = numVal;
-
-          if (numVal < FAULT_THRESHOLD_PERCENT) {
-            rowFaults.add(stdKey);
-            rowFaults.add(`${rowNum}`);
-          }
+    if (rowFaults.size > 0 && colFaults.size > 0) {
+      for (const row of rowFaults) {
+        for (const col of colFaults) {
+          const rowNum = row.replace('Row ', '');
+          const colLetter = col.replace('Col ', '');
+          pointFaults.add(`(${colLetter}, ${rowNum})`);
         }
-        continue;
-      }
-
-      const colMatch = key.match(/^(?:C|Col\s*)([A-F])$/i);
-      if (colMatch) {
-        const colLetter = colMatch[1].toUpperCase();
-        const stdKey = `Col ${colLetter}`;
-        readings[stdKey] = numVal;
-        readings[`C${colLetter}`] = numVal;
-        readings[colLetter] = numVal;
-
-        if (numVal < FAULT_THRESHOLD_PERCENT) {
-          colFaults.add(stdKey);
-          colFaults.add(colLetter);
-        }
-        continue;
-      }
-
-      const plainNum = parseInt(key, 10);
-      if (!isNaN(plainNum) && plainNum >= 1 && plainNum <= 10) {
-        const stdKey = `Row ${plainNum}`;
-        readings[stdKey] = numVal;
-        readings[`R${plainNum}`] = numVal;
-        readings[`${plainNum}`] = numVal;
-        if (numVal < FAULT_THRESHOLD_PERCENT) {
-          rowFaults.add(stdKey);
-          rowFaults.add(`${plainNum}`);
-        }
-        continue;
-      }
-
-      if (/^[A-F]$/i.test(key)) {
-        const colLetter = key.toUpperCase();
-        const stdKey = `Col ${colLetter}`;
-        readings[stdKey] = numVal;
-        readings[`C${colLetter}`] = numVal;
-        readings[colLetter] = numVal;
-        if (numVal < FAULT_THRESHOLD_PERCENT) {
-          colFaults.add(stdKey);
-          colFaults.add(colLetter);
-        }
-        continue;
       }
     }
-
-    if (parsed.faults) {
-      if (Array.isArray(parsed.faults.rows)) {
-        parsed.faults.rows.forEach(r => {
-          const rNum = parseInt(r, 10);
-          if (!isNaN(rNum)) {
-            rowFaults.add(`Row ${rNum}`);
-            rowFaults.add(`${rNum}`);
-          }
-        });
-      }
-      if (Array.isArray(parsed.faults.cols)) {
-        parsed.faults.cols.forEach(c => {
-          const cStr = String(c).toUpperCase();
-          if (/^[A-F]$/.test(cStr)) {
-            colFaults.add(`Col ${cStr}`);
-            colFaults.add(cStr);
-          }
-        });
-      }
-    }
-
-    colFaults.forEach(c => {
-      const cLetter = c.replace(/^(?:Col\s*|C)/i, '').toUpperCase();
-      if (!/^[A-F]$/.test(cLetter)) return;
-
-      rowFaults.forEach(r => {
-        const rNum = r.replace(/^(?:Row\s*|R)/i, '');
-        if (!/^\d+$/.test(rNum)) return;
-
-        pointFaults.add(`${cLetter}${rNum}`);
-        pointFaults.add(`(${cLetter}, ${rNum})`);
-        pointFaults.add(`INT-${cLetter}-${rNum}`);
-      });
-    });
 
     const payload = {
       readings,
+      overallStatus: parsed.status, // "OK" | "FAULT"
       rowFaults,
       colFaults,
       pointFaults,
-      rawJson: parsed
+      rawJson: parsed,
     };
 
     if (this.onFaultUpdateCallback) {
