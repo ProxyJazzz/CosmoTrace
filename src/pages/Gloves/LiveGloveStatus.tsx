@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   ArrowLeft, 
@@ -218,17 +218,43 @@ export const LiveGloveStatus: React.FC = () => {
     return channels.filter(c => c.hand === activeHand && isChannelFaulted(c.id)).map(c => c.id);
   }, [channels, activeHand, simulatedFaults, serialFaults, liveReadings, sensorData]);
 
+  // Keep track of the last fault signature explicitly cleared by the user
+  const clearedFaultSignatureRef = useRef<string | null>(null);
+
   // Start Emergency Alarm when 1 or more faults are detected/simulated
-  const triggerAlarm = () => {
+  const triggerAlarm = useCallback(() => {
     if (emergencyTimer === null || emergencyTimer <= 0) {
       setEmergencyTimer(90);
     }
     emergencyAudio.setMuted(isMuted);
     emergencyAudio.startAlarmLoop();
-  };
+  }, [emergencyTimer, isMuted]);
 
-  // Stop Emergency Alarm
+  // AUTOMATIC FAULT TRIGGER: Start alarm & timer beeping immediately when fault is detected on wires
+  useEffect(() => {
+    if (allFaultedWires.length > 0) {
+      const currentSignature = [...allFaultedWires].sort().join(',');
+      // If this fault event has not been explicitly cleared by the user
+      if (clearedFaultSignatureRef.current !== currentSignature) {
+        if (emergencyTimer === null) {
+          triggerAlarm();
+        }
+        // Auto-select faulted wires in inspector if nothing is selected
+        setSelectedWireIds(prev => {
+          if (prev.length === 0) return allFaultedWires;
+          return prev;
+        });
+      }
+    } else {
+      // Reset cleared signature when everything is clean
+      clearedFaultSignatureRef.current = null;
+    }
+  }, [allFaultedWires, emergencyTimer, triggerAlarm]);
+
+  // Stop Emergency Alarm (User explicit clear)
   const stopEmergencySimulation = () => {
+    const currentSignature = [...allFaultedWires].sort().join(',');
+    clearedFaultSignatureRef.current = currentSignature || 'cleared';
     setSimulatedFaults({});
     setLiveSerialData({}, new Set(), new Set());
     setSelectedIntersection(null);
@@ -523,8 +549,12 @@ export const LiveGloveStatus: React.FC = () => {
   };
 
   const clearAllFaults = () => {
+    const currentSignature = [...allFaultedWires].sort().join(',');
+    clearedFaultSignatureRef.current = currentSignature || 'cleared';
     setSimulatedFaults({});
     setLiveSerialData({}, new Set(), new Set());
+    setSelectedIntersection(null);
+    setSelectedWireIds([]);
     setEmergencyTimer(null);
     emergencyAudio.stopAlarmLoop();
   };
